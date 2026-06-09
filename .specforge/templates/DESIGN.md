@@ -2,7 +2,7 @@
 
 **Last updated:** YYYY-MM-DD
 **Status:** draft
-**Iteration:** ITER-YYYYMMDD-HHMMSS
+**Iteration:** ITER-NNN-<slug>
 
 ## Architecture overview
 

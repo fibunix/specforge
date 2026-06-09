@@ -10,6 +10,10 @@ source "$SCRIPT_DIR/lib/common.sh"
 source "$SCRIPT_DIR/lib/config.sh"
 # shellcheck source=lib/managed-block.sh
 source "$SCRIPT_DIR/lib/managed-block.sh"
+# shellcheck source=lib/spec.sh
+source "$SCRIPT_DIR/lib/spec.sh"
+# shellcheck source=lib/git.sh
+source "$SCRIPT_DIR/lib/git.sh"
 
 ROOT="$(sf_root)"
 SF="$ROOT/.specforge"
@@ -105,9 +109,11 @@ check_config() {
 }
 
 check_scripts() {
-  local script
-  for script in sf-init.sh sf-update.sh sf-test.sh sf-worktree.sh sf-finalize.sh sf-review.sh sf-snapshot.sh sf-trace.sh sf-lint-specs.sh sf-doctor.sh sf-verify-build.sh; do
-    require_executable "$SF/scripts/$script" "script $script"
+  local script script_name
+  for script in "$SF"/scripts/*.sh; do
+    [ -f "$script" ] || continue
+    script_name="$(basename "$script")"
+    require_executable "$script" "script $script_name"
   done
 
   for lib in common.sh config.sh git.sh spec.sh adapter.sh managed-block.sh; do
@@ -116,10 +122,14 @@ check_scripts() {
 }
 
 check_command_surface() {
-  local cmd
-  for cmd in sf-finalize sf-plan sf-review sf-ship sf-status sf-test; do
-    require_file "$SF/skills/$cmd/SKILL.md" "skill $cmd"
-    require_file "$SF/adapters/opencode/commands/$cmd.md" "opencode command $cmd"
+  local skill_dir skill_name
+  for skill_dir in "$SF"/skills/*/; do
+    [ -d "$skill_dir" ] || continue
+    skill_name="$(basename "$skill_dir")"
+    require_file "$skill_dir/SKILL.md" "skill $skill_name"
+    if [ -d "$SF/adapters/opencode/commands" ]; then
+      require_file "$SF/adapters/opencode/commands/$skill_name.md" "opencode command $skill_name"
+    fi
   done
 }
 
@@ -196,6 +206,25 @@ check_adapters() {
   [ "$adapters_found" -gt 0 ] || warn "no IDE adapter directories found; run bash .specforge/scripts/sf-init.sh --ide <ide>"
 }
 
+check_in_flight_branches() {
+  local tmpdir spec_file id branch checkout_state branch_state
+  git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1 || return 0
+
+  tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/sf-doctor.XXXXXX")"
+  while IFS= read -r spec_file; do
+    id="$(sf_spec_id_from_name "$spec_file")"
+    branch="$(sf_branch_for_spec "$id")"
+    sf_branch_exists "$ROOT" "$branch" || continue
+    [ "$(sf_current_branch "$ROOT")" != "$branch" ] || continue
+    checkout_state="$(sf_spec_state "$spec_file")"
+    branch_state="$(sf_spec_effective_state "$ROOT" "$id" "$tmpdir")"
+    if [ "$(sf_state_rank "$branch_state")" -gt "$(sf_state_rank "$checkout_state")" ]; then
+      ok "$id is in flight on $branch (State: $branch_state there, $checkout_state here) — sf status reads the branch state"
+    fi
+  done < <(sf_spec_files "$ROOT")
+  rm -rf "$tmpdir"
+}
+
 echo "SpecForge doctor"
 echo ""
 
@@ -205,6 +234,7 @@ check_scripts
 check_command_surface
 check_root_instructions
 check_adapters
+check_in_flight_branches
 
 echo ""
 if [ "$ERRORS" -gt 0 ]; then

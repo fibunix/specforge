@@ -85,7 +85,13 @@ emit_entries() {
       sub(/^\*\*Iteration:\*\*[[:space:]]*/, "", iteration)
       next
     }
+    /^\*\*State:\*\*/ {
+      spec_state=$0
+      sub(/^\*\*State:\*\*[[:space:]]*/, "", spec_state)
+      next
+    }
     /^\*\*Build state:\*\*/ {
+      # Legacy field; used only when **State:** is absent.
       build_state=$0
       sub(/^\*\*Build state:\*\*[[:space:]]*/, "", build_state)
       next
@@ -137,8 +143,9 @@ emit_entries() {
     }
     END {
       if (iteration == "") iteration=default_iteration
+      if (spec_state == "") spec_state=build_state
       for (i=1; i<=ac_count; i++) {
-        if (ac_checked[i] || build_state == "done") status="implemented"
+        if (ac_checked[i] || spec_state == "done") status="implemented"
         else if (scope == "active") status="active"
         else status="archived"
         printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", ac_id[i], spec, status, count_tests(ac_id[i]), iteration, scope, source_path, supersedes[ac_id[i]], ac_text[i]
@@ -157,7 +164,7 @@ build_tsv() {
   done < <(registry_files)
 
   : > "$out"
-  for file in "${files[@]}"; do
+  for file in ${files[@]+"${files[@]}"}; do
     emit_entries "$file" >> "$out"
   done
 }

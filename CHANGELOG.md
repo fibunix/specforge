@@ -8,7 +8,31 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Fixed
+
+- `sf wave` no longer crashes on macOS default bash (3.2): rewritten without associative arrays.
+- `sf wave finalize` can now actually finalize: done specs are selected independently of the "ready" filter (the old filters were mutually exclusive).
+- `sf-finalize.sh --rebase` from a parallel checkout no longer calls an undefined function; it rebases inside the worktree, reruns tests, ff-merges, and cleans up.
+- `archive-reset` no longer deletes `NEXT.md`: the queued next-iteration brief survives the handoff to the Aligner.
+- Archive directories are now named after the completed iteration's own ID (read from ALIGN.md) instead of the archiving timestamp.
+- A queued `NEXT.md` no longer poisons the iteration-consistency lint (and with it `sf verify`/`sf finalize`): `NEXT.md` is excluded from active-iteration resolution and carries no Iteration field.
+- `sf status` is truthful while work is in flight: per-SPEC State is read from the most-advanced copy (worktree, feature branch blob, or checkout).
+
 ### Added
+
+- `State: approved` now has an owner: the Designer sets it on every SPEC when the human approves the design bundle; builders hard-stop on `draft`.
+- `sf status` ends with a computed `Next:` line (dependency-aware) naming the exact next command; the sf-status skill is now a thin wrapper.
+- `.specforge/templates/NEXT.md` and a documented NEXT.md contract (one bullet per queued requirement, no Iteration field).
+- Sequential, named iteration IDs: `ITER-NNN-<slug>`, generated via `sf-iteration.sh next-id <slug>`.
+- Iteration close-out record: `archive-reset` writes `iterations/<ID>/SUMMARY.md` (specs shipped, requirements, supersedes).
+- `sf doctor` reports specs whose feature branch is ahead of the checkout's spec state.
+- Behavior tests: full lifecycle end-to-end, `sf wave`/`wave finalize`, NEXT.md contract, and a legacy-vocabulary guard.
+
+### Changed
+
+- SPEC lifecycle is now four states: `draft -> approved -> tests-red -> done`. `implemented` is read as legacy (lint warns); SPEC-FORMAT.md § State lifecycle is the single normative reference.
+- Legacy-vocabulary sweep: `sf-ship` skill, designer/builder manuals, codex builder adapter, registry and iteration scripts all use the single `**State:**` field (legacy `Status`/`Build state` still parsed via `sf_spec_state`).
+- `sf-ship` skill slimmed to gate semantics only; the Builder manual is the single process canon.
 
 - Stable `REQ-*` requirement IDs in SPEC acceptance criteria.
 - `sf-trace.sh` and `sf trace` / `sf requirements` for generated requirement trace reports.

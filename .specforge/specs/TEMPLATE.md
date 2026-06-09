@@ -1,10 +1,8 @@
 # TEMPLATE — copy this file to SPEC-{NNN}-{slug}.md to start a new spec
 
 **Traces to:** .specforge/ALIGN.md § "<section>" | .specforge/DESIGN.md § "<section>"
-**Status:** draft
-**Iteration:** ITER-YYYYMMDD-HHMMSS
-**Build state:** not-started
-**Branch:** feature/SPEC-{NNN}
+**State:** draft
+**Iteration:** ITER-NNN-<slug>
 
 ## Description
 

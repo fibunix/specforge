@@ -28,7 +28,7 @@ assert_not_contains() {
 
 canonical_commands=(sf-plan sf-test sf-ship sf-review sf-finalize sf-status)
 legacy_commands=(sf-align sf-design sf-build sf-trace sf-next)
-primary_docs=(README.md AGENTS.md .specforge/root/AGENTS.md .specforge/docs/QUICKSTART.md .specforge/docs/FLOW.md)
+primary_docs=(README.md AGENTS.md .specforge/root/AGENTS.md .specforge/docs/FLOW.md)
 
 # opencode commands are now file-based; check that each canonical command file exists
 for command in "${canonical_commands[@]}"; do

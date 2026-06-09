@@ -44,18 +44,13 @@ elif [ ! -d "$TARGET" ]; then
 elif ! SPEC_FILE="$(sf_resolve_spec_file "$TARGET" "$SPEC")"; then
   ERRORS=$((ERRORS + 1))
 else
-  status="$(sf_spec_field "$SPEC_FILE" "Status")"
-  build_state="$(sf_spec_field "$SPEC_FILE" "Build state")"
-  branch_meta="$(sf_spec_field "$SPEC_FILE" "Branch")"
+  state="$(sf_spec_state "$SPEC_FILE")"
 
-  [ "$status" = "approved" ] || fail_check "SPEC status must be approved, found '${status:-missing}'"
-  [ "$branch_meta" = "$EXPECTED_BRANCH" ] || fail_check "SPEC branch metadata must be $EXPECTED_BRANCH, found '${branch_meta:-missing}'"
-
-  unchecked="$(sf_spec_count_unchecked "$SPEC_FILE")"
-  if [ "$build_state" = "done" ]; then
-    [ "$unchecked" -eq 0 ] || fail_check "Build state is done but $unchecked checkbox(es) are unchecked"
+  if [ "$state" = "done" ]; then
+    unchecked="$(sf_spec_count_unchecked "$SPEC_FILE")"
+    [ "$unchecked" -eq 0 ] || fail_check "State is done but $unchecked checkbox(es) are unchecked"
   else
-    fail_check "Build state must be done before handoff, found '${build_state:-missing}'"
+    fail_check "State must be done before handoff, found '${state:-missing}'"
   fi
 
   current_branch="$(sf_current_branch "$TARGET")"

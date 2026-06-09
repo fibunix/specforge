@@ -124,19 +124,35 @@ run_iteration archive-reset --id ITER-test >/dev/null
 
 assert_exists "$PROJECT/.specforge/iterations/ITER-test/ALIGN.md"
 assert_exists "$PROJECT/.specforge/iterations/ITER-test/DESIGN.md"
-assert_exists "$PROJECT/.specforge/iterations/ITER-test/NEXT.md"
+assert_exists "$PROJECT/.specforge/iterations/ITER-test/SUMMARY.md"
 assert_exists "$PROJECT/.specforge/iterations/ITER-test/specs/SPEC-001.md"
 assert_exists "$PROJECT/.specforge/REGISTRY.md"
 assert_exists "$PROJECT/.specforge/registry.json"
 assert_missing "$PROJECT/.specforge/ALIGN.md"
 assert_missing "$PROJECT/.specforge/DESIGN.md"
-assert_missing "$PROJECT/.specforge/NEXT.md"
 assert_missing "$PROJECT/.specforge/specs/SPEC-001.md"
+
+# NEXT.md is the next iteration's input: it must survive archive-reset and
+# must not be filed into the completed iteration's archive.
+assert_exists "$PROJECT/.specforge/NEXT.md"
+assert_missing "$PROJECT/.specforge/iterations/ITER-test/NEXT.md"
 
 write_plan
 write_done_spec
 if run_iteration archive-reset --id ITER-test >/dev/null 2>&1; then
   fail "archive-reset should refuse to overwrite an existing archive"
+fi
+
+# Without --id, the archive is named after the completed iteration's own ID
+# (read from ALIGN.md), not the archiving timestamp.
+run_iteration archive-reset >/dev/null
+assert_exists "$PROJECT/.specforge/iterations/ITER-active/ALIGN.md"
+assert_exists "$PROJECT/.specforge/iterations/ITER-active/SUMMARY.md"
+
+# next-id is sequential over archived iterations (2 archives -> ITER-003).
+next_id_output="$(run_iteration next-id csv-export)"
+if [ "$next_id_output" != "ITER-003-csv-export" ]; then
+  fail "next-id should be ITER-003-csv-export with two archives, got '$next_id_output'"
 fi
 
 if [ "$failures" -gt 0 ]; then

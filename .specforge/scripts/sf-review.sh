@@ -36,47 +36,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-sf_resolve_branch_spec_path() {
-  local root="$1"
-  local branch="$2"
-  local spec_or_file="$3"
-  local base
-  local exact
-  local matches=()
-  local path
-
-  base="$(sf_spec_basename "$spec_or_file")"
-  exact=".specforge/specs/$base.md"
-
-  if git -C "$root" cat-file -e "$branch:$exact" 2>/dev/null; then
-    echo "$exact"
-    return 0
-  fi
-
-  while IFS= read -r path; do
-    case "$path" in
-      .specforge/specs/"$base"-*.md) matches+=("$path") ;;
-    esac
-  done < <(git -C "$root" ls-tree -r --name-only "$branch" .specforge/specs 2>/dev/null || true)
-
-  case "${#matches[@]}" in
-    1)
-      echo "${matches[0]}"
-      return 0
-      ;;
-    0)
-      return 1
-      ;;
-    *)
-      sf_fail "SPEC file is ambiguous for $spec_or_file on $branch. Matching files:"
-      for path in "${matches[@]}"; do
-        echo "  $(basename "$path")" >&2
-      done
-      echo "Pass the full spec basename, for example: $(basename "${matches[0]}" .md)" >&2
-      return 2
-      ;;
-  esac
-}
+# Branch-blob spec resolution lives in lib/spec.sh (sf_resolve_branch_spec_path).
 
 sf_branch_exists "$ROOT" "$BRANCH" && BRANCH_EXISTS=1
 
@@ -122,9 +82,7 @@ if [ ! -f "$DISPLAY_SPEC" ]; then
   exit 1
 fi
 
-status="$(sf_spec_field "$DISPLAY_SPEC" "Status")"
-build_state="$(sf_spec_field "$DISPLAY_SPEC" "Build state")"
-branch_meta="$(sf_spec_field "$DISPLAY_SPEC" "Branch")"
+state="$(sf_spec_state "$DISPLAY_SPEC")"
 
 if [ "$DISPLAY_SPEC" = "$TEMP_SPEC" ]; then
   display_label="$BRANCH:$branch_spec_path"
@@ -133,9 +91,8 @@ else
 fi
 
 echo "SPEC file: $display_label"
-echo "Status: ${status:-missing}"
-echo "Build state: ${build_state:-missing}"
-echo "Branch: ${branch_meta:-$BRANCH}"
+echo "State: ${state:-missing}"
+echo "Branch: $BRANCH"
 echo ""
 
 echo "Checklist"
@@ -169,7 +126,7 @@ fi
 [ -n "$commits" ] && printf '%s\n' "$commits" || echo "  (none)"
 echo ""
 
-echo "Committed diffstat"
+echo "Diffstat"
 if [ "$BRANCH_EXISTS" -eq 1 ]; then
   committed_stat="$(git -C "$ROOT" diff --stat "$BASE..$BRANCH" -- || true)"
 else
@@ -178,28 +135,17 @@ fi
 [ -n "$committed_stat" ] && printf '%s\n' "$committed_stat" || echo "  (none)"
 echo ""
 
-echo "Pending changes"
+# Show pending (uncommitted) changes when on the feature branch or in a worktree.
 if [ "$CURRENT_BRANCH" = "$BRANCH" ] || [ -n "$PARALLEL_CHECKOUT" ]; then
   staged_stat="$(git -C "$TARGET" diff --cached --stat -- || true)"
   unstaged_stat="$(git -C "$TARGET" diff --stat -- || true)"
-
-  if [ -n "$staged_stat" ]; then
-    echo "  Staged:"
-    printf '%s\n' "$staged_stat"
-  else
-    echo "  Staged: none"
+  if [ -n "$staged_stat" ] || [ -n "$unstaged_stat" ]; then
+    echo "Pending changes"
+    [ -n "$staged_stat" ] && printf '%s\n' "$staged_stat" || true
+    [ -n "$unstaged_stat" ] && printf '%s\n' "$unstaged_stat" || true
+    echo ""
   fi
-
-  if [ -n "$unstaged_stat" ]; then
-    echo "  Unstaged:"
-    printf '%s\n' "$unstaged_stat"
-  else
-    echo "  Unstaged: none"
-  fi
-else
-  echo "  Switch to $BRANCH to inspect pending changes."
 fi
-echo ""
 
 if [ "$MODE" = "--patch" ]; then
   echo "Patch"
@@ -213,20 +159,23 @@ if [ "$MODE" = "--patch" ]; then
   echo ""
 fi
 
-case "$build_state" in
-  not-started|"")
+case "$state" in
+  draft|"")
+    echo "Next: approve the design bundle during /sf-plan (the Designer sets State: approved), then run /sf-test $SPEC_ID."
+    ;;
+  approved)
     echo "Next: run /sf-test $SPEC_ID to write reviewable red tests."
     ;;
   tests-red)
     echo "Next: review the red tests. If they are right, run /sf-ship $SPEC_ID."
     ;;
   implemented)
-    echo "Next: finish verification, tick SPEC checkboxes, and commit before final review."
+    echo "Next: legacy State 'implemented' — a ship session stopped mid-handoff. Tick SPEC checkboxes, set State: done, and commit."
     ;;
   done)
     echo "Next: review the final diff. If it is right, run /sf-finalize $SPEC_ID."
     ;;
   *)
-    echo "Next: resolve unknown Build state '$build_state'."
+    echo "Next: resolve unknown State '$state'."
     ;;
 esac

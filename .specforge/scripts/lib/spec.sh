@@ -5,7 +5,7 @@ sf_spec_files() {
   local root="$1"
   local dir="$root/.specforge/specs"
   [ -d "$dir" ] || return 0
-  find "$dir" -maxdepth 1 -type f -name 'SPEC-*.md' ! -name 'SPEC-TEMPLATE.md' | sort
+  find "$dir" -maxdepth 1 -type f -name 'SPEC-*.md' | sort
 }
 
 sf_spec_basename() {
@@ -51,7 +51,7 @@ sf_resolve_spec_file() {
 
   while IFS= read -r file; do
     matches+=("$file")
-  done < <(find "$dir" -maxdepth 1 -type f -name "$base-*.md" ! -name 'SPEC-TEMPLATE.md' | sort)
+  done < <(find "$dir" -maxdepth 1 -type f -name "$base-*.md" | sort)
 
   case "${#matches[@]}" in
     1)
@@ -71,6 +71,26 @@ sf_resolve_spec_file() {
       return 1
       ;;
   esac
+}
+
+sf_spec_state() {
+  local file="$1"
+  local state status build_state
+  state="$(sf_spec_field "$file" "State")"
+  if [ -n "$state" ]; then
+    echo "$state"
+    return 0
+  fi
+  # Legacy fallback: derive from Status + Build state
+  build_state="$(sf_spec_field "$file" "Build state")"
+  status="$(sf_spec_field "$file" "Status")"
+  if [ -n "$build_state" ] && [ "$build_state" != "not-started" ]; then
+    echo "$build_state"
+  elif [ -n "$status" ]; then
+    echo "$status"
+  else
+    echo ""
+  fi
 }
 
 sf_status_line() {
@@ -106,7 +126,9 @@ sf_active_iteration() {
   local root="$1"
   local value=""
 
-  for file in "$root/.specforge/NEXT.md" "$root/.specforge/ALIGN.md" "$root/.specforge/DESIGN.md"; do
+  # NEXT.md is intentionally excluded: it describes the *next* iteration and
+  # carries no Iteration field (see templates/NEXT.md).
+  for file in "$root/.specforge/ALIGN.md" "$root/.specforge/DESIGN.md"; do
     if [ -f "$file" ]; then
       value="$(sf_spec_field "$file" "Iteration")"
       if [ -n "$value" ]; then
@@ -191,4 +213,135 @@ sf_spec_display_file() {
   else
     echo "$root/.specforge/specs/$(sf_spec_basename "$spec").md"
   fi
+}
+
+# Lifecycle order used to pick the most-advanced copy of a spec.
+sf_state_rank() {
+  case "$1" in
+    done) echo 5 ;;
+    implemented) echo 4 ;;  # legacy state, treated as nearly done
+    tests-red) echo 3 ;;
+    approved) echo 2 ;;
+    draft|not-started) echo 1 ;;
+    *) echo 0 ;;
+  esac
+}
+
+# Resolve a spec's path inside a git branch (no checkout needed).
+# Prints the in-repo relative path. Returns 1 if missing, 2 if ambiguous.
+sf_resolve_branch_spec_path() {
+  local root="$1"
+  local branch="$2"
+  local spec_or_file="$3"
+  local base
+  local exact
+  local matches=()
+  local path
+
+  base="$(sf_spec_basename "$spec_or_file")"
+  exact=".specforge/specs/$base.md"
+
+  if git -C "$root" cat-file -e "$branch:$exact" 2>/dev/null; then
+    echo "$exact"
+    return 0
+  fi
+
+  while IFS= read -r path; do
+    case "$path" in
+      .specforge/specs/"$base"-*.md) matches+=("$path") ;;
+    esac
+  done < <(git -C "$root" ls-tree -r --name-only "$branch" .specforge/specs 2>/dev/null || true)
+
+  case "${#matches[@]}" in
+    1)
+      echo "${matches[0]}"
+      return 0
+      ;;
+    0)
+      return 1
+      ;;
+    *)
+      sf_fail "SPEC file is ambiguous for $spec_or_file on $branch. Matching files:"
+      for path in "${matches[@]}"; do
+        echo "  $(basename "$path")" >&2
+      done
+      echo "Pass the full spec basename, for example: $(basename "${matches[0]}" .md)" >&2
+      return 2
+      ;;
+  esac
+}
+
+# Most-advanced copy of a spec: worktree copy, feature-branch blob, or
+# checkout copy — whichever carries the furthest **State:**. Branch blobs are
+# extracted into the caller-provided tmpdir (caller owns cleanup).
+# Requires lib/git.sh to be sourced.
+sf_spec_effective_file() {
+  local root="$1"
+  local spec="$2"
+  local tmpdir="$3"
+  local best_file best_rank
+  local branch branch_path branch_file branch_rank
+
+  best_file="$(sf_spec_display_file "$root" "$spec")"
+  best_rank="$(sf_state_rank "$(sf_spec_state "$best_file" 2>/dev/null)")"
+
+  branch="$(sf_branch_for_spec "$spec")"
+  if sf_branch_exists "$root" "$branch" && [ "$(sf_current_branch "$root")" != "$branch" ] \
+    && ! sf_worktree_for_branch "$root" "$branch" >/dev/null 2>&1; then
+    if branch_path="$(sf_resolve_branch_spec_path "$root" "$branch" "$spec" 2>/dev/null)"; then
+      branch_file="$tmpdir/${branch//\//_}.$(sf_spec_basename "$branch_path").md"
+      if git -C "$root" show "$branch:$branch_path" > "$branch_file" 2>/dev/null; then
+        branch_rank="$(sf_state_rank "$(sf_spec_state "$branch_file" 2>/dev/null)")"
+        if [ "$branch_rank" -gt "$best_rank" ]; then
+          best_file="$branch_file"
+          best_rank="$branch_rank"
+        fi
+      fi
+    fi
+  fi
+
+  echo "$best_file"
+}
+
+# State of the most-advanced copy of a spec (see sf_spec_effective_file).
+sf_spec_effective_state() {
+  local root="$1"
+  local spec="$2"
+  local tmpdir="$3"
+  sf_spec_state "$(sf_spec_effective_file "$root" "$spec" "$tmpdir")"
+}
+
+# SPEC IDs in DESIGN.md "SPECS produced" table order (build order).
+sf_design_spec_order() {
+  local root="$1"
+  local design="$root/.specforge/DESIGN.md"
+  [ -f "$design" ] || return 0
+  awk '
+    /^\| *SPEC/ { header=1; next }
+    header && /^\|/ {
+      split($0, cols, "|")
+      row_id=cols[2]; gsub(/[[:space:]]/, "", row_id)
+      if (row_id ~ /^SPEC-/) print row_id
+    }
+  ' "$design"
+}
+
+# Dependencies of one SPEC from the DESIGN.md "SPECS produced" table.
+sf_design_spec_deps() {
+  local root="$1"
+  local spec_id="$2"
+  local design="$root/.specforge/DESIGN.md"
+  [ -f "$design" ] || return 0
+  awk -v id="$spec_id" '
+    /^\| *SPEC/ { header=1; next }
+    header && /^\|/ {
+      split($0, cols, "|")
+      row_id=cols[2]; gsub(/[[:space:]]/, "", row_id)
+      deps=cols[4];   gsub(/[[:space:]]/, "", deps)
+      if (row_id == id && deps != "—" && deps != "-" && deps != "") {
+        gsub(/,/, " ", deps)
+        print deps
+      }
+    }
+  ' "$design"
 }

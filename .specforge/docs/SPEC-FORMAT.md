@@ -9,7 +9,7 @@ Prefer `.specforge/specs/SPEC-{NNN}-{slug}.md`, for example
 
 Commands use the stable SPEC ID (`SPEC-009`) and resolve either
 `.specforge/specs/SPEC-009.md` or `.specforge/specs/SPEC-009-<slug>.md`.
-Branch names also use the stable ID: `feature/SPEC-009`, not the filename slug.
+Branch names also use the stable ID: `feature/SPEC-009`.
 
 ## Template
 
@@ -17,10 +17,8 @@ Branch names also use the stable ID: `feature/SPEC-009`, not the filename slug.
 # SPEC-{NNN}: <Title>
 
 **Traces to:** .specforge/ALIGN.md § "<section>" | .specforge/DESIGN.md § "<section>"
-**Status:** draft | approved
-**Iteration:** ITER-YYYYMMDD-HHMMSS
-**Build state:** not-started | tests-red | implemented | done
-**Branch:** feature/SPEC-{NNN}
+**State:** draft | approved | tests-red | done
+**Iteration:** ITER-NNN-<slug>
 
 ## Description
 
@@ -64,6 +62,8 @@ Branch names also use the stable ID: `feature/SPEC-009`, not the filename slug.
   `## Supersedes`.
 - **Iteration IDs are required.** Every active SPEC must include
   `**Iteration:** ITER-...` so active work can be separated from archives.
+  IDs are sequential and named: `ITER-NNN-<slug>` (the Aligner assigns them
+  via `sf-iteration.sh next-id <slug>`).
 - **Test files are listed in the SPEC.** The builder creates exactly these files. If a new test is needed mid-build, the human updates the SPEC.
 - **Implementation files are listed in the SPEC.** Same logic — keeps the work bounded.
 - **No code in the SPEC.** The SPEC describes *what*; the builder writes *how*.
@@ -77,28 +77,38 @@ Branch names also use the stable ID: `feature/SPEC-009`, not the filename slug.
 | "Code is clean" | (not an AC — throw it out) |
 | "Handles edge cases" | "REQ-AUTH-003: Submitting an empty email shows the error 'Email is required' inline" |
 
-## Status flow
+## State lifecycle
+
+This section is the normative statement of the lifecycle. Other docs link
+here; if another file disagrees, this one wins.
 
 ```
 draft -> approved -> tests-red -> done
 ```
 
-- `draft` — designer is working on it
-- `approved` — human has signed off; Test can start
-- `tests-red` lives in `Build state`, not `Status`
-- Ship updates checkboxes after implementation passes
-- when all checkboxes are ticked, the spec is effectively done
+Each transition has exactly one owner:
 
-## Build state
+- `draft` — the Designer is working on it.
+- `draft -> approved` — the **Designer** sets this when the human approves the
+  design bundle. It records the Plan gate on disk; builders and `sf wave`
+  trust it.
+- `approved -> tests-red` — the **Builder** sets this during `/sf-test`, after
+  tests are written, confirmed failing for the expected reason, and committed.
+  `tests-red` is a human review gate; the builder does not implement until the
+  tests are approved (running `/sf-ship` is the approval signal).
+- `tests-red -> done` — the **Builder** sets this during `/sf-ship`, after the
+  tests pass and every acceptance-criteria, Tests, and Implementation checkbox
+  is ticked.
 
-`Build state` is a small human-readable sub-state for the Test and Ship cycle:
+The state field does not replace the checkboxes.
 
-- `not-started` — no tests or implementation have started
-- `tests-red` — tests were written and confirmed failing; human test review is required before implementation
-- `implemented` — implementation exists and tests are passing, but handoff is not complete
-- `done` — all acceptance criteria, tests, and implementation checkboxes are ticked
+Legacy fields are read but should be migrated; `sf lint` warns on each:
 
-The builder updates this field as it works. `tests-red` is a human review gate; the builder does not implement until the tests are approved. The field does not replace the checkboxes.
+- Separate `**Status:**` / `**Build state:**` fields → replace both with a
+  single `**State:**` field using the equivalent value.
+- `**State:** implemented` (an old intermediate between tests-red and done) →
+  it meant "tests pass but checkboxes/commit incomplete"; finish the handoff
+  and set `done`.
 
 ## Ticking checkboxes
 
@@ -113,19 +123,12 @@ A SPEC is "done" when every acceptance-criteria box is ticked AND every Tests an
 Run this to see which requirements were implemented:
 
 ```bash
-bash .specforge/scripts/sf-trace.sh
-```
-
-or:
-
-```bash
 sf trace
 ```
 
 The trace report is generated from active SPEC files and archived iteration
 SPEC files. It also refreshes `.specforge/REGISTRY.md` and
-`.specforge/registry.json`, which are generated indexes for human and script
-consumption.
+`.specforge/registry.json`.
 
 Registry status meanings:
 
@@ -139,52 +142,23 @@ The registry is generated state. Do not edit it directly; edit SPECS and rerun
 
 ## SPEC linting
 
-Run this before approving design or handing off a build:
-
-```bash
-bash .specforge/scripts/sf-lint-specs.sh
-```
-
-or:
-
 ```bash
 sf lint
 ```
 
-The linter checks for required metadata, stable requirement IDs, test coverage mappings, the 8-AC limit, and implementation checked before tests.
+The linter checks for required metadata, stable requirement IDs, test coverage mappings, the 8-AC limit, implementation checked before tests, and cross-spec file overlap.
 
 Before handing off a completed build, run:
 
 ```bash
-bash .specforge/scripts/sf-verify-build.sh SPEC-ID
+sf verify SPEC-ID
 ```
-
-The verifier resolves `SPEC-ID` to either `.specforge/specs/SPEC-ID.md` or
-`.specforge/specs/SPEC-ID-<slug>.md`, then checks the approved SPEC, branch
-metadata, completed checkboxes, SPEC lint, and the configured test command(s).
-
-To inspect red tests or the final implementation diff, run:
-
-```bash
-bash .specforge/scripts/sf-review.sh SPEC-ID
-```
-
-or:
-
-```bash
-sf review SPEC-ID
-sf review SPEC-ID --patch
-```
-
-Review accepts the same stable `SPEC-ID` resolver forms as verification.
 
 After reviewing the final implementation diff, finalize the spec:
 
 ```bash
-bash .specforge/scripts/sf-finalize.sh SPEC-ID
+sf finalize SPEC-ID
 ```
-
-The finalizer reruns verification, fast-forward merges the feature branch into the base branch, and deletes the feature branch.
 
 ## Editing a SPEC after approval
 

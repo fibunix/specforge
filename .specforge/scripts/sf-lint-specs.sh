@@ -14,6 +14,7 @@ source "$SCRIPT_DIR/lib/spec.sh"
 
 ROOT="$(sf_root)"
 ERRORS=0
+WARNINGS=0
 
 files=()
 while IFS= read -r file; do
@@ -29,30 +30,38 @@ fail() {
   ERRORS=$((ERRORS + 1))
 }
 
+warn() {
+  sf_warn "$1"
+  WARNINGS=$((WARNINGS + 1))
+}
+
 for f in "${files[@]}"; do
   spec="$(basename "$f")"
 
-  grep -q '^\*\*Status:\*\*[[:space:]]' "$f" || fail "$spec missing **Status:**"
-  grep -q '^\*\*Branch:\*\*[[:space:]]' "$f" || fail "$spec missing **Branch:**"
-  grep -q '^\*\*Build state:\*\*[[:space:]]' "$f" || fail "$spec missing **Build state:**"
+  # Support both new (State) and legacy (Status + Build state) field names.
+  has_state=0
+  has_legacy=0
+  grep -q '^\*\*State:\*\*[[:space:]]' "$f" && has_state=1 || true
+  grep -q '^\*\*Status:\*\*[[:space:]]' "$f" && has_legacy=1 || true
+
+  if [ "$has_state" -eq 0 ] && [ "$has_legacy" -eq 0 ]; then
+    fail "$spec missing **State:** field"
+  elif [ "$has_state" -eq 0 ] && [ "$has_legacy" -eq 1 ]; then
+    warn "$spec uses legacy **Status:** / **Build state:** fields; migrate to **State:** (see SPEC-FORMAT.md)"
+  fi
+
   grep -q '^\*\*Traces to:\*\*[[:space:]]' "$f" || fail "$spec missing **Traces to:**"
   grep -q '^\*\*Iteration:\*\*[[:space:]]' "$f" || fail "$spec missing **Iteration:**"
 
-  status="$(sf_spec_field "$f" "Status")"
-  case "$status" in
-    draft|approved) ;;
+  state="$(sf_spec_state "$f")"
+  case "$state" in
+    draft|approved|tests-red|done) ;;
+    implemented) warn "$spec uses legacy **State:** implemented; the lifecycle is draft -> approved -> tests-red -> done (see SPEC-FORMAT.md)" ;;
     "") ;;
-    *) fail "$spec has invalid **Status:** $status" ;;
+    *) fail "$spec has invalid **State:** $state" ;;
   esac
 
-  build_state="$(sf_spec_field "$f" "Build state")"
-  case "$build_state" in
-    not-started|tests-red|implemented|done) ;;
-    "") ;;
-    *) fail "$spec has invalid **Build state:** $build_state" ;;
-  esac
-
-  awk -v file="$spec" -v build_state="$build_state" '
+  awk -v file="$spec" -v state="$state" '
     function err(msg) {
       print "error: " file " " msg > "/dev/stderr"
       errors++
@@ -127,14 +136,15 @@ for f in "${files[@]}"; do
       if (impl_done > 0 && test_done < test_total) {
         err("has checked implementation while some tests remain unchecked")
       }
-      if (build_state == "done" && (ac_done < ac_total || test_done < test_total || impl_done < impl_total)) {
-        err("has Build state done but not all checkboxes are checked")
+      if (state == "done" && (ac_done < ac_total || test_done < test_total || impl_done < impl_total)) {
+        err("has State done but not all checkboxes are checked")
       }
       if (errors > 0) exit 1
     }
   ' "$f" || ERRORS=$((ERRORS + 1))
 done
 
+# ── Cross-spec duplicate requirement IDs ────────────────────────────────────
 duplicate_ids="$(
   awk '
     /^## Acceptance criteria$/ { section="ac"; next }
@@ -169,9 +179,67 @@ $duplicate_ids
 EOF
 fi
 
+# ── S2b: Iteration consistency ───────────────────────────────────────────────
+# All active artifacts must share the same Iteration value.
+active_iteration="$(sf_active_iteration "$ROOT")"
+if [ -n "$active_iteration" ] && [ "$active_iteration" != "none" ]; then
+  for artifact in "$ROOT/.specforge/ALIGN.md" "$ROOT/.specforge/DESIGN.md"; do
+    if [ -f "$artifact" ]; then
+      art_iter="$(sf_spec_field "$artifact" "Iteration")"
+      if [ -n "$art_iter" ] && [ "$art_iter" != "$active_iteration" ]; then
+        fail "$(basename "$artifact") Iteration ($art_iter) does not match active iteration ($active_iteration)"
+      fi
+    fi
+  done
+  for f in "${files[@]}"; do
+    spec_iter="$(sf_spec_field "$f" "Iteration")"
+    if [ -n "$spec_iter" ] && [ "$spec_iter" != "$active_iteration" ]; then
+      fail "$(basename "$f") Iteration ($spec_iter) does not match active iteration ($active_iteration)"
+    fi
+  done
+fi
+
+# ── E3: Cross-spec file overlap ──────────────────────────────────────────────
+# Warn when two active specs declare the same test or implementation file.
+overlap_output="$(
+  awk '
+    /^## Tests$/ { section="tests"; next }
+    /^## Implementation$/ { section="impl"; next }
+    /^## / { section=""; next }
+    (section == "tests" || section == "impl") && /^- \[[ x]\]/ {
+      line=$0
+      sub(/^- \[[ x]\][[:space:]]*/, "", line)
+      # Extract file path: first token before whitespace
+      split(line, parts, /[[:space:]]/)
+      path=parts[1]
+      if (path != "") {
+        if (path in seen) {
+          if (seen[path] != FILENAME) {
+            print "warning: file " path " declared in both " seen[path] " and " FILENAME
+          }
+        } else {
+          seen[path]=FILENAME
+        }
+      }
+    }
+  ' "${files[@]}"
+)"
+
+if [ -n "$overlap_output" ]; then
+  while IFS= read -r line; do
+    [ -n "$line" ] && { sf_warn "$line"; WARNINGS=$((WARNINGS + 1)); }
+  done <<EOF
+$overlap_output
+EOF
+fi
+
 if [ "$ERRORS" -gt 0 ]; then
   echo "SPEC lint failed with $ERRORS error group(s)." >&2
   exit 1
 fi
 
-echo "SPEC lint passed."
+if [ "$WARNINGS" -gt 0 ]; then
+  echo "SPEC lint passed with $WARNINGS warning(s)."
+else
+  echo "SPEC lint passed."
+fi

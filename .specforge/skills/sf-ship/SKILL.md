@@ -6,17 +6,18 @@ disable-model-invocation: true
 
 # /sf-ship SPEC-ID - implement after test approval
 
-This is the Ship phase for one SPEC after the human has reviewed and approved
-the red tests.
+This is the Ship phase for one SPEC. Invoking `/sf-ship` IS the human's
+approval of the committed red tests — no separate approval step exists.
 
 ## What you do
 
-1. Read `.specforge/agents/builder.md`.
-2. Verify the SPEC resolves to `.specforge/specs/SPEC-{ID}.md` or `.specforge/specs/SPEC-{ID}-<slug>.md`.
-3. Verify `Build state: tests-red` and that the human has approved the red tests.
-4. Implement the minimum code for the approved tests.
-5. Run `bash .specforge/scripts/sf-test.sh` and fix failures.
-6. Tick the SPEC checkboxes, set `Build state: done`, commit, and verify.
-7. Stop for final human review. Do not finalize.
+1. Read `.specforge/agents/builder.md` — it is your full operating procedure.
+   The process steps live there (step 7 onward), not here.
+2. Verify the SPEC resolves to `.specforge/specs/SPEC-{ID}.md` or
+   `.specforge/specs/SPEC-{ID}-<slug>.md` and that `**State:**` is `tests-red`.
+   - Any other state: stop and report it. Do not implement a spec whose red
+     tests were never written and committed.
+3. Follow the builder manual through implementation, verification, and the
+   final commit. Stop for final human review. Do not finalize.
 
 Tell the human to run `/sf-review SPEC-ID` before `/sf-finalize SPEC-ID`.

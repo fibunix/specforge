@@ -2,19 +2,22 @@
 # sf — SpecForge CLI
 #
 # Usage:
-#   sf init [--ide <ide>]       Bootstrap SpecForge in current project
-#   sf update [--dry-run]       Update framework files and managed instructions
-#   sf doctor                   Check install/config/adapter health
-#   sf status                   Show phase, queued next work, and per-SPEC status
-#   sf test [PROJECT-ID]        Run configured test command(s)
-#   sf verify SPEC-ID           Verify a build branch before review/merge
-#   sf review SPEC-ID           Show review summary and diffstat for a spec
-#   sf finalize SPEC-ID         Verify, merge, and clean up a completed spec
-#   sf worktree create SPEC-ID  Optional: create a parallel checkout
-#   sf worktree merge SPEC-ID   Optional: merge a parallel checkout
-#   sf trace                    Show requirement traceability from active and archived SPECS
-#   sf lint                     Validate SPEC quality
-#   sf help                     Show this help
+#   sf init [--ide <ide>]                Bootstrap SpecForge in current project
+#   sf update [--dry-run]                Update framework files and managed instructions
+#   sf doctor                            Check install/config/adapter health
+#   sf status                            Show phase, queued next work, and per-SPEC status
+#   sf test [PROJECT-ID]                 Run configured test command(s)
+#   sf verify SPEC-ID                    Verify a build branch before review/merge
+#   sf review SPEC-ID [--patch]          Show review summary and diffstat for a spec
+#   sf finalize SPEC-ID [--dry-run]      Verify, merge, and clean up a completed spec
+#   sf finalize SPEC-ID --rebase         Rebase onto base branch then ff-merge
+#   sf worktree create SPEC-ID           Optional: create a parallel checkout
+#   sf worktree merge SPEC-ID            Optional: merge a parallel checkout
+#   sf wave                              Show parallel-safe spec wave plan
+#   sf wave finalize                     Finalize all done specs in the current wave
+#   sf trace                             Show requirement traceability from active and archived SPECS
+#   sf lint                              Validate SPEC quality
+#   sf help                              Show this help
 #
 # This script finds .specforge/ by walking up from CWD.
 # If not found, 'sf init' will download and install SpecForge.
@@ -38,29 +41,39 @@ find_specforge() {
   return 1
 }
 
+# ── Require .specforge/ or die ──
+require_sf() {
+  SF="$(find_specforge "$(pwd)")" || {
+    echo "error: .specforge/ not found. Run: sf init" >&2
+    exit 1
+  }
+  ROOT="$(dirname "$SF")"
+}
+
 # ── Show help ──
 show_help() {
   cat <<'HELP'
 sf — SpecForge CLI
 
 Usage:
-  sf init [--ide <ide>]         Bootstrap SpecForge in current project
-  sf update [--dry-run]         Update framework files and managed instructions
-  sf doctor                     Check install/config/adapter health
-  sf status                     Show phase, queued next work, and per-SPEC status
-  sf test [PROJECT-ID]          Run configured test command(s)
-  sf verify SPEC-ID             Verify a build branch before review/merge
-  sf review SPEC-ID [--patch]   Show review summary and diffstat for a spec
-  sf finalize SPEC-ID           Verify, merge, and clean up a completed spec
-  sf finalize SPEC-ID --dry-run
-                                Verify and check merge without changing state
-  sf worktree create SPEC-ID    Optional: create a parallel checkout
-  sf worktree merge SPEC-ID     Optional: merge a parallel checkout
-  sf worktree merge SPEC-ID --dry-run
-                                Check whether a parallel checkout can fast-forward
-  sf trace                      Show requirement traceability from active and archived SPECS
-  sf lint                       Validate SPEC quality
-  sf help                       Show this help
+  sf init [--ide <ide>]                Bootstrap SpecForge in current project
+  sf update [--dry-run]                Update framework files and managed instructions
+  sf doctor                            Check install/config/adapter health
+  sf status                            Show phase, queued next work, and per-SPEC status
+  sf test [PROJECT-ID]                 Run configured test command(s)
+  sf verify SPEC-ID                    Verify a build branch before review/merge
+  sf review SPEC-ID [--patch]          Show review summary and diffstat for a spec
+  sf finalize SPEC-ID                  Verify, merge, and clean up a completed spec
+  sf finalize SPEC-ID --dry-run        Verify and check merge without changing state
+  sf finalize SPEC-ID --rebase         Rebase onto base branch, rerun tests, then ff-merge
+  sf worktree create SPEC-ID           Optional: create a parallel checkout
+  sf worktree merge SPEC-ID            Optional: merge a parallel checkout
+  sf worktree merge SPEC-ID --dry-run  Check whether a parallel checkout can fast-forward
+  sf wave                              Show which ready specs can run in parallel
+  sf wave finalize                     Finalize all done specs of the current wave in order
+  sf trace                             Show requirement traceability from active and archived SPECS
+  sf lint                              Validate SPEC quality
+  sf help                              Show this help
 
 SPEC-ID accepts .specforge/specs/SPEC-ID.md or .specforge/specs/SPEC-ID-<slug>.md.
 Branches use the stable SPEC ID, for example feature/SPEC-009.
@@ -68,16 +81,12 @@ Branches use the stable SPEC ID, for example feature/SPEC-009.
 IDE options for 'sf init':
   opencode, claude-code, codex, pi, antigravity, all
 
-The 'sf init' command installs SpecForge if .specforge/ isn't found.
-All other commands require SpecForge to be installed.
-
 Use the slash commands in your editor for the full workflow:
   /sf-plan        Plan the work: align, design, and approve SPECS
-  /sf-test ID     Write red tests and stop for review
-  /sf-review ID   Inspect tests or implementation changes
+  /sf-test ID     Write red tests, commit, and stop for review
+  /sf-review ID   Inspect committed tests or implementation changes
   /sf-ship ID     Implement after test approval
-  /sf-finalize ID
-                  Verify, merge, and clean up after review
+  /sf-finalize ID Verify, merge, and clean up after review
   /sf-status      Same as 'sf status'
 HELP
 }
@@ -102,15 +111,12 @@ case "$COMMAND" in
       ROOT="$(dirname "$SF")"
       bash "$SF/scripts/sf-init.sh" "$@"
     else
-      # Try to find install.sh
       SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
       REPO_DIR="$(dirname "$SELF_DIR")"
 
       if [ -f "$REPO_DIR/install.sh" ]; then
-        # Running from inside the specforge repo
         bash "$REPO_DIR/install.sh" --source "$REPO_DIR" --dir "$(pwd)" "$@"
       else
-        # Download and install
         TEMP_DIR="$(mktemp -d)"
         cleanup() { rm -rf "$TEMP_DIR"; }
         trap cleanup EXIT
@@ -138,13 +144,9 @@ case "$COMMAND" in
     fi
     ;;
 
-  # ── status: show snapshot ──
+  # ── update ──
   update)
-    SF="$(find_specforge "$(pwd)")" || {
-      echo "error: .specforge/ not found. Run: sf init" >&2
-      exit 1
-    }
-    ROOT="$(dirname "$SF")"
+    require_sf
     SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     REPO_DIR="$(dirname "$SELF_DIR")"
 
@@ -157,84 +159,64 @@ case "$COMMAND" in
     fi
     ;;
 
-  # ── status: show snapshot ──
+  # ── doctor ──
   doctor)
-    SF="$(find_specforge "$(pwd)")" || {
-      echo "error: .specforge/ not found. Run: sf init" >&2
-      exit 1
-    }
+    require_sf
     bash "$SF/scripts/sf-doctor.sh"
     ;;
 
+  # ── status ──
   status|snapshot)
-    SF="$(find_specforge "$(pwd)")" || {
-      echo "error: .specforge/ not found. Run: sf init" >&2
-      exit 1
-    }
+    require_sf
     bash "$SF/scripts/sf-snapshot.sh"
     ;;
 
-  # ── trace: show requirement trace report ──
+  # ── trace ──
   trace|requirements)
-    SF="$(find_specforge "$(pwd)")" || {
-      echo "error: .specforge/ not found. Run: sf init" >&2
-      exit 1
-    }
+    require_sf
     bash "$SF/scripts/sf-trace.sh"
     ;;
 
-  # ── lint: validate spec quality ──
+  # ── lint ──
   lint)
-    SF="$(find_specforge "$(pwd)")" || {
-      echo "error: .specforge/ not found. Run: sf init" >&2
-      exit 1
-    }
+    require_sf
     bash "$SF/scripts/sf-lint-specs.sh"
     ;;
 
-  # ── test: run configured test command(s) ──
+  # ── test ──
   test)
-    SF="$(find_specforge "$(pwd)")" || {
-      echo "error: .specforge/ not found. Run: sf init" >&2
-      exit 1
-    }
+    require_sf
     bash "$SF/scripts/sf-test.sh" "$@"
     ;;
 
-  # ── verify: build handoff check ──
+  # ── verify ──
   verify)
-    SF="$(find_specforge "$(pwd)")" || {
-      echo "error: .specforge/ not found. Run: sf init" >&2
-      exit 1
-    }
+    require_sf
     bash "$SF/scripts/sf-verify-build.sh" "$@"
     ;;
 
-  # ── review: inspect spec branch changes ──
+  # ── review ──
   review)
-    SF="$(find_specforge "$(pwd)")" || {
-      echo "error: .specforge/ not found. Run: sf init" >&2
-      exit 1
-    }
+    require_sf
     bash "$SF/scripts/sf-review.sh" "$@"
     ;;
 
-  # ── finalize: verify, merge, clean up ──
+  # ── finalize ──
   finalize)
-    SF="$(find_specforge "$(pwd)")" || {
-      echo "error: .specforge/ not found. Run: sf init" >&2
-      exit 1
-    }
+    require_sf
     bash "$SF/scripts/sf-finalize.sh" "$@"
     ;;
 
-  # ── worktree: optional parallel checkout create/merge ──
+  # ── worktree ──
   worktree)
-    SF="$(find_specforge "$(pwd)")" || {
-      echo "error: .specforge/ not found. Run: sf init" >&2
-      exit 1
-    }
+    require_sf
     bash "$SF/scripts/sf-worktree.sh" "$@"
+    ;;
+
+  # ── wave ──
+  wave)
+    require_sf
+    bash "$SF/scripts/sf-wave.sh" "$@"
     ;;
 
   # ── help ──
