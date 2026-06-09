@@ -1,0 +1,28 @@
+# SpecForge project config. Edit values; agents read this file.
+project_name: specforge
+test_command: for t in tests/*.test.sh; do bash "$t"; done
+lint_command: npm run lint
+build_command: npm run build
+source_dir: src
+
+# Repos with multiple projects can replace the flat commands above with
+# a projects list. `sf test` runs every project; `sf test sdf` runs one.
+#
+# projects:
+#   - id: sdf
+#     name: NetSuite SDF
+#     path: netsuite/sdf
+#     source_dir: src
+#     test_command: npm test
+#     lint_command: npm run lint
+#     build_command: npm run build
+#   - id: extension
+#     name: NetSuite Extension
+#     path: netsuite/extension
+#     source_dir: src
+#     test_command: npm test
+#   - id: theme
+#     name: NetSuite Theme
+#     path: netsuite/theme
+#     source_dir: src
+#     test_command: npm test

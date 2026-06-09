@@ -1,0 +1,250 @@
+#!/usr/bin/env bash
+# sf — SpecForge CLI
+#
+# Usage:
+#   sf init [--ide <ide>]       Bootstrap SpecForge in current project
+#   sf update [--dry-run]       Update framework files and managed instructions
+#   sf doctor                   Check install/config/adapter health
+#   sf status                   Show phase, queued next work, and per-SPEC status
+#   sf test [PROJECT-ID]        Run configured test command(s)
+#   sf verify SPEC-ID           Verify a build branch before review/merge
+#   sf review SPEC-ID           Show review summary and diffstat for a spec
+#   sf finalize SPEC-ID         Verify, merge, and clean up a completed spec
+#   sf worktree create SPEC-ID  Optional: create a parallel checkout
+#   sf worktree merge SPEC-ID   Optional: merge a parallel checkout
+#   sf trace                    Show requirement traceability from active and archived SPECS
+#   sf lint                     Validate SPEC quality
+#   sf help                     Show this help
+#
+# This script finds .specforge/ by walking up from CWD.
+# If not found, 'sf init' will download and install SpecForge.
+
+set -euo pipefail
+
+BOLD='\033[1m'
+GREEN='\033[0;32m'
+RESET='\033[0m'
+
+# ── Find .specforge/ by walking up ──
+find_specforge() {
+  local dir="${1:-$(pwd)}"
+  while [ "$dir" != "/" ]; do
+    if [ -f "$dir/.specforge/scripts/sf-init.sh" ]; then
+      echo "$dir/.specforge"
+      return 0
+    fi
+    dir="$(cd "$dir/.." && pwd)"
+  done
+  return 1
+}
+
+# ── Show help ──
+show_help() {
+  cat <<'HELP'
+sf — SpecForge CLI
+
+Usage:
+  sf init [--ide <ide>]         Bootstrap SpecForge in current project
+  sf update [--dry-run]         Update framework files and managed instructions
+  sf doctor                     Check install/config/adapter health
+  sf status                     Show phase, queued next work, and per-SPEC status
+  sf test [PROJECT-ID]          Run configured test command(s)
+  sf verify SPEC-ID             Verify a build branch before review/merge
+  sf review SPEC-ID [--patch]   Show review summary and diffstat for a spec
+  sf finalize SPEC-ID           Verify, merge, and clean up a completed spec
+  sf finalize SPEC-ID --dry-run
+                                Verify and check merge without changing state
+  sf worktree create SPEC-ID    Optional: create a parallel checkout
+  sf worktree merge SPEC-ID     Optional: merge a parallel checkout
+  sf worktree merge SPEC-ID --dry-run
+                                Check whether a parallel checkout can fast-forward
+  sf trace                      Show requirement traceability from active and archived SPECS
+  sf lint                       Validate SPEC quality
+  sf help                       Show this help
+
+SPEC-ID accepts .specforge/specs/SPEC-ID.md or .specforge/specs/SPEC-ID-<slug>.md.
+Branches use the stable SPEC ID, for example feature/SPEC-009.
+
+IDE options for 'sf init':
+  opencode, claude-code, codex, pi, antigravity, all
+
+The 'sf init' command installs SpecForge if .specforge/ isn't found.
+All other commands require SpecForge to be installed.
+
+Use the slash commands in your editor for the full workflow:
+  /sf-plan        Plan the work: align, design, and approve SPECS
+  /sf-test ID     Write red tests and stop for review
+  /sf-review ID   Inspect tests or implementation changes
+  /sf-ship ID     Implement after test approval
+  /sf-finalize ID
+                  Verify, merge, and clean up after review
+  /sf-status      Same as 'sf status'
+HELP
+}
+
+# ── Handle no arguments ──
+if [ $# -eq 0 ]; then
+  show_help
+  exit 0
+fi
+
+COMMAND="$1"
+shift
+
+case "$COMMAND" in
+
+  # ── init: install or reinitialize ──
+  init)
+    SF="$(find_specforge "$(pwd)" 2>/dev/null || true)"
+
+    if [ -n "$SF" ]; then
+      echo -e "${GREEN}SpecForge already installed.${RESET} Reinitializing..."
+      ROOT="$(dirname "$SF")"
+      bash "$SF/scripts/sf-init.sh" "$@"
+    else
+      # Try to find install.sh
+      SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+      REPO_DIR="$(dirname "$SELF_DIR")"
+
+      if [ -f "$REPO_DIR/install.sh" ]; then
+        # Running from inside the specforge repo
+        bash "$REPO_DIR/install.sh" --source "$REPO_DIR" --dir "$(pwd)" "$@"
+      else
+        # Download and install
+        TEMP_DIR="$(mktemp -d)"
+        cleanup() { rm -rf "$TEMP_DIR"; }
+        trap cleanup EXIT
+
+        SPECFORGE_REPO="${SPECFORGE_REPO:-}"
+        if [ -n "$SPECFORGE_REPO" ] && [ -f "$SPECFORGE_REPO/install.sh" ]; then
+          bash "$SPECFORGE_REPO/install.sh" --source "$SPECFORGE_REPO" --dir "$(pwd)" "$@"
+        else
+          echo -e "${BOLD}Downloading SpecForge...${RESET}"
+          if command -v git &>/dev/null; then
+            git clone --depth 1 https://github.com/anomalyco/specforge.git "$TEMP_DIR/specforge" 2>/dev/null || {
+              echo "Could not download SpecForge from GitHub." >&2
+              echo "Clone the repo and run: bash /path/to/specforge/install.sh" >&2
+              exit 1
+            }
+            bash "$TEMP_DIR/specforge/install.sh" --source "$TEMP_DIR/specforge" --dir "$(pwd)" "$@"
+          else
+            echo "git is required to download SpecForge." >&2
+            echo "Install git, or clone the repo manually and run:" >&2
+            echo "  bash /path/to/specforge/install.sh" >&2
+            exit 1
+          fi
+        fi
+      fi
+    fi
+    ;;
+
+  # ── status: show snapshot ──
+  update)
+    SF="$(find_specforge "$(pwd)")" || {
+      echo "error: .specforge/ not found. Run: sf init" >&2
+      exit 1
+    }
+    ROOT="$(dirname "$SF")"
+    SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    REPO_DIR="$(dirname "$SELF_DIR")"
+
+    if [ -f "$REPO_DIR/.specforge/scripts/sf-update.sh" ]; then
+      bash "$REPO_DIR/.specforge/scripts/sf-update.sh" --root "$ROOT" --source "$REPO_DIR" "$@"
+    elif [ -n "${SPECFORGE_REPO:-}" ] && [ -f "$SPECFORGE_REPO/.specforge/scripts/sf-update.sh" ]; then
+      bash "$SPECFORGE_REPO/.specforge/scripts/sf-update.sh" --root "$ROOT" --source "$SPECFORGE_REPO" "$@"
+    else
+      bash "$SF/scripts/sf-update.sh" "$@"
+    fi
+    ;;
+
+  # ── status: show snapshot ──
+  doctor)
+    SF="$(find_specforge "$(pwd)")" || {
+      echo "error: .specforge/ not found. Run: sf init" >&2
+      exit 1
+    }
+    bash "$SF/scripts/sf-doctor.sh"
+    ;;
+
+  status|snapshot)
+    SF="$(find_specforge "$(pwd)")" || {
+      echo "error: .specforge/ not found. Run: sf init" >&2
+      exit 1
+    }
+    bash "$SF/scripts/sf-snapshot.sh"
+    ;;
+
+  # ── trace: show requirement trace report ──
+  trace|requirements)
+    SF="$(find_specforge "$(pwd)")" || {
+      echo "error: .specforge/ not found. Run: sf init" >&2
+      exit 1
+    }
+    bash "$SF/scripts/sf-trace.sh"
+    ;;
+
+  # ── lint: validate spec quality ──
+  lint)
+    SF="$(find_specforge "$(pwd)")" || {
+      echo "error: .specforge/ not found. Run: sf init" >&2
+      exit 1
+    }
+    bash "$SF/scripts/sf-lint-specs.sh"
+    ;;
+
+  # ── test: run configured test command(s) ──
+  test)
+    SF="$(find_specforge "$(pwd)")" || {
+      echo "error: .specforge/ not found. Run: sf init" >&2
+      exit 1
+    }
+    bash "$SF/scripts/sf-test.sh" "$@"
+    ;;
+
+  # ── verify: build handoff check ──
+  verify)
+    SF="$(find_specforge "$(pwd)")" || {
+      echo "error: .specforge/ not found. Run: sf init" >&2
+      exit 1
+    }
+    bash "$SF/scripts/sf-verify-build.sh" "$@"
+    ;;
+
+  # ── review: inspect spec branch changes ──
+  review)
+    SF="$(find_specforge "$(pwd)")" || {
+      echo "error: .specforge/ not found. Run: sf init" >&2
+      exit 1
+    }
+    bash "$SF/scripts/sf-review.sh" "$@"
+    ;;
+
+  # ── finalize: verify, merge, clean up ──
+  finalize)
+    SF="$(find_specforge "$(pwd)")" || {
+      echo "error: .specforge/ not found. Run: sf init" >&2
+      exit 1
+    }
+    bash "$SF/scripts/sf-finalize.sh" "$@"
+    ;;
+
+  # ── worktree: optional parallel checkout create/merge ──
+  worktree)
+    SF="$(find_specforge "$(pwd)")" || {
+      echo "error: .specforge/ not found. Run: sf init" >&2
+      exit 1
+    }
+    bash "$SF/scripts/sf-worktree.sh" "$@"
+    ;;
+
+  # ── help ──
+  help|--help|-h)
+    show_help
+    ;;
+
+  *)
+    echo "Unknown command: $COMMAND" >&2
+    echo "Run 'sf help' for usage." >&2
+    exit 1
+    ;;
+esac
