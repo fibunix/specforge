@@ -101,6 +101,56 @@ echo "  Tests: $(sf_spec_count_section "$DISPLAY_SPEC" "Tests")"
 echo "  Impl:  $(sf_spec_count_section "$DISPLAY_SPEC" "Implementation")"
 echo ""
 
+echo "Requirements coverage"
+awk '
+  /^## Acceptance criteria$/ { section="ac"; next }
+  /^## Tests$/ { section="tests"; next }
+  /^## / { section=""; next }
+  section == "ac" && /^- \[[ x]\]/ {
+    line=$0
+    sub(/^- \[[ x]\][[:space:]]*/, "", line)
+    id=line; sub(/:.*/, "", id)
+    if (id ~ /^REQ-[A-Z0-9][A-Z0-9-]*-[0-9]+$/) {
+      ac_count++
+      ac_ids[ac_count]=id
+      ac_checked[ac_count]=($0 ~ /^- \[x\]/)
+    }
+  }
+  section == "tests" && /^- \[[ x]\]/ {
+    test_count++
+    test_lines[test_count]=$0
+    test_checked[test_count]=($0 ~ /^- \[x\]/)
+  }
+  END {
+    function covers(line, req,    rest, n, parts, i) {
+      if (line !~ /\(covers /) return 0
+      rest=line
+      sub(/^.*\(covers[[:space:]]*/, "", rest)
+      sub(/\).*$/, "", rest)
+      gsub(/,/, " ", rest)
+      n=split(rest, parts, /[[:space:]]+/)
+      for (i=1; i<=n; i++) if (parts[i] == req) return 1
+      return 0
+    }
+    for (i=1; i<=ac_count; i++) {
+      done=0; total=0
+      for (j=1; j<=test_count; j++) {
+        if (covers(test_lines[j], ac_ids[i])) {
+          total++
+          if (test_checked[j]) done++
+        }
+      }
+      ac_mark = ac_checked[i] ? "[x]" : "[ ]"
+      if (total == 0)           note="no test lines"
+      else if (done == total)   note=done "/" total " tests ticked"
+      else                      note=done "/" total " tests ticked (partial)"
+      printf "  %s %-24s %s\n", ac_mark, ac_ids[i], note
+    }
+    if (ac_count == 0) print "  (no REQ-* IDs found in Acceptance criteria)"
+  }
+' "$DISPLAY_SPEC"
+echo ""
+
 echo "Git"
 if [ "$BRANCH_EXISTS" -eq 1 ]; then
   BASE="$(sf_review_base "$ROOT" "$BRANCH")"
@@ -134,6 +184,39 @@ else
 fi
 [ -n "$committed_stat" ] && printf '%s\n' "$committed_stat" || echo "  (none)"
 echo ""
+
+if [ "$BRANCH_EXISTS" -eq 1 ] && [ -f "$DISPLAY_SPEC" ]; then
+  declared_files="$(awk '
+    /^## Tests$/ { section=1; next }
+    /^## Implementation$/ { section=1; next }
+    /^## / { section=0; next }
+    section && /^- \[[ x]\]/ {
+      line=$0
+      sub(/^- \[[ x]\][[:space:]]*/, "", line)
+      split(line, parts, " ")
+      if (parts[1] != "") print parts[1]
+    }
+  ' "$DISPLAY_SPEC")"
+  changed_files="$(git -C "$ROOT" diff --name-only "$BASE..$BRANCH" -- 2>/dev/null || true)"
+  if [ -n "$changed_files" ]; then
+    undeclared=""
+    while IFS= read -r cf; do
+      [ -n "$cf" ] || continue
+      case "$cf" in
+        .specforge/specs/*|.specforge/LEARNINGS.md|.specforge/CONTEXT.md|docs/adr/*) continue ;;
+      esac
+      if ! printf '%s\n' "$declared_files" | grep -qxF "$cf"; then
+        undeclared="${undeclared}  ${cf}
+"
+      fi
+    done <<< "$changed_files"
+    if [ -n "$undeclared" ]; then
+      echo "Warning: files changed but not declared in the SPEC (scope creep or missing declaration):"
+      printf '%s' "$undeclared"
+      echo ""
+    fi
+  fi
+fi
 
 # Show pending (uncommitted) changes when on the feature branch or in a worktree.
 if [ "$CURRENT_BRANCH" = "$BRANCH" ] || [ -n "$PARALLEL_CHECKOUT" ]; then

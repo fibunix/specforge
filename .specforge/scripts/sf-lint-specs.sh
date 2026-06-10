@@ -179,6 +179,49 @@ $duplicate_ids
 EOF
 fi
 
+# ── S2a2: REQ-ID reuse across archived iterations ───────────────────────────
+# An active REQ-* ID must not appear in any archived spec. Changed behavior
+# requires a new ID that supersedes the old one (FLOW.md rule 8).
+if [ -d "$ROOT/.specforge/iterations" ]; then
+  archived_spec_files=()
+  while IFS= read -r f; do
+    archived_spec_files+=("$f")
+  done < <(find "$ROOT/.specforge/iterations" -path '*/specs/SPEC-*.md' -type f | sort)
+
+  if [ "${#archived_spec_files[@]}" -gt 0 ]; then
+    archived_req_ids="$(awk '
+      /^## Acceptance criteria$/ { section="ac"; next }
+      /^## / { section=""; next }
+      section == "ac" && /^- \[[ x]\]/ {
+        line=$0
+        sub(/^- \[[ x]\][[:space:]]*/, "", line)
+        id=line; sub(/:.*/, "", id)
+        if (id ~ /^REQ-[A-Z0-9][A-Z0-9-]*-[0-9]+$/) print id
+      }
+    ' "${archived_spec_files[@]}")"
+
+    if [ -n "$archived_req_ids" ]; then
+      for f in "${files[@]}"; do
+        while IFS= read -r id; do
+          [ -n "$id" ] || continue
+          if printf '%s\n' "$archived_req_ids" | grep -qxF "$id"; then
+            fail "$(basename "$f"): REQ ID $id reuses an archived requirement (use a new ID that supersedes the old one)"
+          fi
+        done < <(awk '
+          /^## Acceptance criteria$/ { section="ac"; next }
+          /^## / { section=""; next }
+          section == "ac" && /^- \[[ x]\]/ {
+            line=$0
+            sub(/^- \[[ x]\][[:space:]]*/, "", line)
+            id=line; sub(/:.*/, "", id)
+            if (id ~ /^REQ-[A-Z0-9][A-Z0-9-]*-[0-9]+$/) print id
+          }
+        ' "$f")
+      done
+    fi
+  fi
+fi
+
 # ── S2b: Iteration consistency ───────────────────────────────────────────────
 # All active artifacts must share the same Iteration value.
 active_iteration="$(sf_active_iteration "$ROOT")"

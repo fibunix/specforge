@@ -271,9 +271,9 @@ sf_resolve_branch_spec_path() {
   esac
 }
 
-# Most-advanced copy of a spec: worktree copy, feature-branch blob, or
-# checkout copy — whichever carries the furthest **State:**. Branch blobs are
-# extracted into the caller-provided tmpdir (caller owns cleanup).
+# Most-advanced copy of a spec: worktree copy (at any path), feature-branch
+# blob, or checkout copy — whichever carries the furthest **State:**. Branch
+# blobs are extracted into the caller-provided tmpdir (caller owns cleanup).
 # Requires lib/git.sh to be sourced.
 sf_spec_effective_file() {
   local root="$1"
@@ -281,20 +281,32 @@ sf_spec_effective_file() {
   local tmpdir="$3"
   local best_file best_rank
   local branch branch_path branch_file branch_rank
+  local wt_path wt_file wt_rank
 
   best_file="$(sf_spec_display_file "$root" "$spec")"
   best_rank="$(sf_state_rank "$(sf_spec_state "$best_file" 2>/dev/null)")"
 
   branch="$(sf_branch_for_spec "$spec")"
-  if sf_branch_exists "$root" "$branch" && [ "$(sf_current_branch "$root")" != "$branch" ] \
-    && ! sf_worktree_for_branch "$root" "$branch" >/dev/null 2>&1; then
-    if branch_path="$(sf_resolve_branch_spec_path "$root" "$branch" "$spec" 2>/dev/null)"; then
-      branch_file="$tmpdir/${branch//\//_}.$(sf_spec_basename "$branch_path").md"
-      if git -C "$root" show "$branch:$branch_path" > "$branch_file" 2>/dev/null; then
-        branch_rank="$(sf_state_rank "$(sf_spec_state "$branch_file" 2>/dev/null)")"
-        if [ "$branch_rank" -gt "$best_rank" ]; then
-          best_file="$branch_file"
-          best_rank="$branch_rank"
+  if sf_branch_exists "$root" "$branch" && [ "$(sf_current_branch "$root")" != "$branch" ]; then
+    if wt_path="$(sf_worktree_for_branch "$root" "$branch" 2>/dev/null)"; then
+      # Worktree exists — read spec from it at its actual path (handles custom paths).
+      if wt_file="$(sf_resolve_spec_file "$wt_path" "$spec" 2>/dev/null)"; then
+        wt_rank="$(sf_state_rank "$(sf_spec_state "$wt_file" 2>/dev/null)")"
+        if [ "$wt_rank" -gt "$best_rank" ]; then
+          best_file="$wt_file"
+          best_rank="$wt_rank"
+        fi
+      fi
+    else
+      # No worktree — read spec from branch blob instead.
+      if branch_path="$(sf_resolve_branch_spec_path "$root" "$branch" "$spec" 2>/dev/null)"; then
+        branch_file="$tmpdir/${branch//\//_}.$(sf_spec_basename "$branch_path").md"
+        if git -C "$root" show "$branch:$branch_path" > "$branch_file" 2>/dev/null; then
+          branch_rank="$(sf_state_rank "$(sf_spec_state "$branch_file" 2>/dev/null)")"
+          if [ "$branch_rank" -gt "$best_rank" ]; then
+            best_file="$branch_file"
+            best_rank="$branch_rank"
+          fi
         fi
       fi
     fi
@@ -317,8 +329,7 @@ sf_design_spec_order() {
   local design="$root/.specforge/DESIGN.md"
   [ -f "$design" ] || return 0
   awk '
-    /^\| *SPEC/ { header=1; next }
-    header && /^\|/ {
+    /^\| *SPEC-[A-Z0-9]/ {
       split($0, cols, "|")
       row_id=cols[2]; gsub(/[[:space:]]/, "", row_id)
       if (row_id ~ /^SPEC-/) print row_id
@@ -333,8 +344,7 @@ sf_design_spec_deps() {
   local design="$root/.specforge/DESIGN.md"
   [ -f "$design" ] || return 0
   awk -v id="$spec_id" '
-    /^\| *SPEC/ { header=1; next }
-    header && /^\|/ {
+    /^\| *SPEC-[A-Z0-9]/ {
       split($0, cols, "|")
       row_id=cols[2]; gsub(/[[:space:]]/, "", row_id)
       deps=cols[4];   gsub(/[[:space:]]/, "", deps)

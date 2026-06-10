@@ -14,7 +14,7 @@ COMMAND="${1:-}"
 shift || true
 
 usage() {
-  sf_usage "sf-iteration.sh status | next-id [slug] | archive-reset [--dry-run] [--id ITER-ID]"
+  sf_usage "sf-iteration.sh status | next-id [slug] | archive-reset [--dry-run] [--abandon] [--id ITER-ID]"
 }
 
 spec_is_done() {
@@ -85,6 +85,33 @@ next_id() {
   fi
 }
 
+# Close-out record for an abandoned (incomplete) iteration.
+write_abandon_summary() {
+  local archive_dir="$1"
+  local id="$2"
+  local summary="$archive_dir/SUMMARY.md"
+  local count=0
+
+  {
+    echo "# $id — Iteration summary"
+    echo ""
+    echo "**Archived:** $(date +%Y-%m-%d)"
+    echo "**Status:** abandoned"
+    echo ""
+    echo "This iteration was abandoned before all specs were complete."
+    echo ""
+    echo "## Artifacts archived"
+    echo ""
+    [ -f "$ROOT/.specforge/ALIGN.md" ] && echo "- ALIGN.md" || true
+    [ -f "$ROOT/.specforge/DESIGN.md" ] && echo "- DESIGN.md" || true
+    while IFS= read -r spec; do
+      echo "- specs/$(basename "$spec")"
+      count=$((count + 1))
+    done < <(sf_spec_files "$ROOT")
+    [ "$count" -eq 0 ] && echo "- (no specs)" || true
+  } > "$summary"
+}
+
 # Human-readable close-out record for one archived iteration.
 write_summary() {
   local archive_dir="$1"
@@ -138,12 +165,17 @@ write_summary() {
 
 archive_reset() {
   local dry_run=false
+  local abandon=false
   local id=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --dry-run)
         dry_run=true
+        shift
+        ;;
+      --abandon)
+        abandon=true
         shift
         ;;
       --id)
@@ -156,14 +188,18 @@ archive_reset() {
     esac
   done
 
-  [ "$(sf_status_line "$ROOT/.specforge/ALIGN.md")" = "approved" ] || sf_die "ALIGN.md must be approved before archiving"
-  [ "$(sf_status_line "$ROOT/.specforge/DESIGN.md")" = "approved" ] || sf_die "DESIGN.md must be approved before archiving"
-  all_specs_done || sf_die "all active SPEC files must be done before archiving"
+  if [ "$abandon" = false ]; then
+    [ "$(sf_status_line "$ROOT/.specforge/ALIGN.md")" = "approved" ] || sf_die "ALIGN.md must be approved before archiving"
+    [ "$(sf_status_line "$ROOT/.specforge/DESIGN.md")" = "approved" ] || sf_die "DESIGN.md must be approved before archiving"
+    all_specs_done || sf_die "all active SPEC files must be done before archiving"
+  fi
 
-  # Default to the completed iteration's own ID so the archive directory
-  # matches the **Iteration:** field inside the archived artifacts.
+  # Default to the iteration's own ID so the archive directory matches the
+  # **Iteration:** field inside the archived artifacts.
   if [ -z "$id" ]; then
-    id="$(sf_spec_field "$ROOT/.specforge/ALIGN.md" "Iteration")"
+    if [ -f "$ROOT/.specforge/ALIGN.md" ]; then
+      id="$(sf_spec_field "$ROOT/.specforge/ALIGN.md" "Iteration")"
+    fi
   fi
   [ -n "$id" ] || id="ITER-$(date +%Y%m%d-%H%M%S)"
   case "$id" in
@@ -175,7 +211,11 @@ archive_reset() {
   [ ! -e "$archive_dir" ] || sf_die "iteration archive already exists: .specforge/iterations/$id"
 
   if [ "$dry_run" = true ]; then
-    echo "would archive active iteration to .specforge/iterations/$id"
+    if [ "$abandon" = true ]; then
+      echo "would abandon and archive active iteration to .specforge/iterations/$id"
+    else
+      echo "would archive active iteration to .specforge/iterations/$id"
+    fi
     echo "would reset .specforge/ALIGN.md, .specforge/DESIGN.md, and active SPEC files"
     echo "would keep .specforge/NEXT.md as the next iteration's brief"
     return 0
@@ -193,7 +233,11 @@ archive_reset() {
     cp "$spec" "$archive_dir/specs/$(basename "$spec")"
   done < <(sf_spec_files "$ROOT")
 
-  write_summary "$archive_dir" "$id"
+  if [ "$abandon" = true ]; then
+    write_abandon_summary "$archive_dir" "$id"
+  else
+    write_summary "$archive_dir" "$id"
+  fi
 
   # NEXT.md is the *next* iteration's input — never archive-and-delete it.
   rm -f "$ROOT/.specforge/ALIGN.md" "$ROOT/.specforge/DESIGN.md"
@@ -207,7 +251,11 @@ archive_reset() {
     ( cd "$ROOT" && bash "$SCRIPT_DIR/sf-registry.sh" rebuild >/dev/null )
   fi
 
-  echo "Archived active iteration to .specforge/iterations/$id"
+  if [ "$abandon" = true ]; then
+    echo "Abandoned and archived active iteration to .specforge/iterations/$id"
+  else
+    echo "Archived active iteration to .specforge/iterations/$id"
+  fi
   if [ -f "$ROOT/.specforge/NEXT.md" ]; then
     echo "Kept .specforge/NEXT.md as the next iteration's brief."
   fi

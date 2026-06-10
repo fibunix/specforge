@@ -131,6 +131,15 @@ Finalize:
 the feature branch. Use `/sf-finalize SPEC-ID --dry-run` to check without
 changing state.
 
+The base branch is auto-detected as `main`, `master`, `trunk`, or `develop`. If
+your project uses a different branch, set `SPECFORGE_BASE_BRANCH` before
+running finalize:
+
+```bash
+export SPECFORGE_BASE_BRANCH=release
+sf finalize SPEC-ID
+```
+
 Status and traceability:
 
 ```text

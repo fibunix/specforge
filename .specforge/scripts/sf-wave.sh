@@ -76,15 +76,30 @@ state_of() {
   echo "unknown"
 }
 
+# A dependency is satisfied only when it is done in the checkout (merged), or
+# when its feature branch is an ancestor of the base branch (merged but not yet
+# pulled). A dep that is done on an *unmerged* feature branch does NOT count:
+# sf-worktree.sh branches from the base, so the dependent worktree would lack
+# the dep's implementation. (Mirrors the stricter semantics in sf-snapshot.sh.)
+checkout_state_done() {
+  local id="$1" file
+  if file="$(sf_resolve_spec_file "$ROOT" "$id" 2>/dev/null)"; then
+    [ "$(sf_spec_state "$file")" = "done" ]
+  else
+    return 1
+  fi
+}
+
 deps_satisfied() {
-  local id="$1" dep dep_state dep_branch base_branch
+  local id="$1" dep dep_branch base_branch
   for dep in $(sf_design_spec_deps "$ROOT" "$id"); do
-    dep_state="$(state_of "$dep")"
-    if [ "$dep_state" != "done" ]; then
+    if checkout_state_done "$dep"; then
+      : # done in checkout (merged) — ok
+    else
       dep_branch="$(sf_branch_for_spec "$dep")"
       base_branch="$(sf_base_branch "$ROOT" "$dep_branch" 2>/dev/null || true)"
       if [ -n "$base_branch" ] && git -C "$ROOT" merge-base --is-ancestor "$dep_branch" "$base_branch" 2>/dev/null; then
-        : # dep was merged — ok
+        : # dep branch merged into base — ok
       else
         return 1
       fi
@@ -96,12 +111,34 @@ deps_satisfied() {
 # ── finalize: merge every done spec of the iteration, in order ──────────────
 # Selection is independent of the "ready" filter: a done spec lives at State
 # done on its feature branch or worktree, never at approved.
+# Iteration order: DESIGN-table order (deps before dependents), falling back
+# to file order for any specs not listed in the table.
 if [ "$SUBCOMMAND" = "finalize" ]; then
   finalized=0
   skipped=0
-  for ((i = 0; i < ${#all_ids[@]}; i++)); do
-    id="${all_ids[$i]}"
-    state="${all_states[$i]}"
+
+  # Build finalize_ids in DESIGN-table order, appending any extra specs.
+  design_order=()
+  while IFS= read -r did; do
+    design_order+=("$did")
+  done < <(sf_design_spec_order "$ROOT")
+
+  finalize_ids=()
+  for did in ${design_order[@]+"${design_order[@]}"}; do
+    for id in ${all_ids[@]+"${all_ids[@]}"}; do
+      [ "$id" = "$did" ] && { finalize_ids+=("$id"); break; }
+    done
+  done
+  for id in ${all_ids[@]+"${all_ids[@]}"}; do
+    found=0
+    for fid in ${finalize_ids[@]+"${finalize_ids[@]}"}; do
+      [ "$id" = "$fid" ] && { found=1; break; }
+    done
+    [ "$found" -eq 0 ] && finalize_ids+=("$id")
+  done
+
+  for id in ${finalize_ids[@]+"${finalize_ids[@]}"}; do
+    state="$(state_of "$id")"
     branch="$(sf_branch_for_spec "$id")"
     if [ "$state" != "done" ]; then
       echo "  $id: State is '${state:-missing}' (not done) — skipping"

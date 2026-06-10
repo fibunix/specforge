@@ -11,6 +11,8 @@
 #   sf review SPEC-ID [--patch]          Show review summary and diffstat for a spec
 #   sf finalize SPEC-ID [--dry-run]      Verify, merge, and clean up a completed spec
 #   sf finalize SPEC-ID --rebase         Rebase onto base branch then ff-merge
+#   sf iteration abandon                 Abandon the active iteration and archive it
+#   sf queue "requirement text"          Append a bullet to NEXT.md (creates it if absent)
 #   sf worktree create SPEC-ID           Optional: create a parallel checkout
 #   sf worktree merge SPEC-ID            Optional: merge a parallel checkout
 #   sf wave                              Show parallel-safe spec wave plan
@@ -66,6 +68,8 @@ Usage:
   sf finalize SPEC-ID                  Verify, merge, and clean up a completed spec
   sf finalize SPEC-ID --dry-run        Verify and check merge without changing state
   sf finalize SPEC-ID --rebase         Rebase onto base branch, rerun tests, then ff-merge
+  sf iteration abandon                 Abandon the active iteration and archive it
+  sf queue "requirement text"          Append a bullet to NEXT.md (creates it if absent)
   sf worktree create SPEC-ID           Optional: create a parallel checkout
   sf worktree merge SPEC-ID            Optional: merge a parallel checkout
   sf worktree merge SPEC-ID --dry-run  Check whether a parallel checkout can fast-forward
@@ -205,6 +209,29 @@ case "$COMMAND" in
   finalize)
     require_sf
     bash "$SF/scripts/sf-finalize.sh" "$@"
+    ;;
+
+  # ── queue ──
+  queue)
+    require_sf
+    bash "$SF/scripts/sf-queue.sh" "$@"
+    ;;
+
+  # ── iteration ──
+  iteration)
+    require_sf
+    SUBCOMMAND="${1:-}"
+    shift || true
+    case "$SUBCOMMAND" in
+      abandon)
+        bash "$SF/scripts/sf-iteration.sh" archive-reset --abandon "$@"
+        ;;
+      *)
+        echo "Unknown iteration subcommand: $SUBCOMMAND" >&2
+        echo "Usage: sf iteration abandon" >&2
+        exit 1
+        ;;
+    esac
     ;;
 
   # ── worktree ──

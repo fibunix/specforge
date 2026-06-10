@@ -48,6 +48,14 @@ source_dir: src
 
 For monorepos, define `projects:` in the same file.
 
+If your base branch is not `main`, `master`, `trunk`, or `develop`, set the
+`SPECFORGE_BASE_BRANCH` environment variable so that `sf finalize` and
+`sf wave finalize` can find it:
+
+```bash
+export SPECFORGE_BASE_BRANCH=release
+```
+
 ## Use
 
 Run these in your AI coding tool:

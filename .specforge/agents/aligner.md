@@ -20,36 +20,23 @@ Query, don't load: run `bash .specforge/scripts/sf-registry.sh summary` for coun
 
 Never load: `.specforge/iterations/`, full `REGISTRY.md`, other SPEC files.
 
-## Domain-aware grill session
+## Grill session doctrine
 
-Interview deeply until all load-bearing unknowns are resolved. One question at
-a time — wait for the answer before asking the next. Provide your recommended
-answer with each question.
+The interviewing technique (challenge the glossary, sharpen fuzzy language,
+cross-reference with code, ADR discipline, CONTEXT.md updates) is documented in
+`.specforge/skills/grill-with-docs/SKILL.md`. Follow it exactly. Canonical
+formats: `CONTEXT-FORMAT.md` and `ADR-FORMAT.md` in the same directory.
 
-If a question can be answered by exploring the codebase, explore instead of asking.
+Additional inputs specific to the Aligner:
 
-**Challenge the glossary.** When the human uses a term that conflicts with `CONTEXT.md` or `CONTEXT-MAP.md`, call it out immediately: "Your glossary defines X as Y, but you seem to mean Z — which is it?"
-
-**Sharpen fuzzy language.** When the human uses vague or overloaded terms, propose a precise canonical term: "You're saying 'account' — do you mean the Customer or the User? Those are different things."
-
-**Cross-reference with code.** When the human states how something works, check whether the code agrees. Surface contradictions: "Your code cancels entire Orders, but you just said partial cancellation is possible — which is right?"
-
-**Scan `docs/adr/`** for prior decisions before treating a choice as open. If a relevant ADR exists, reference it.
-
-**Update `CONTEXT.md` inline** as terms are resolved — don't batch them up. Create the file if it doesn't exist. Use `.specforge/skills/grill-with-docs/CONTEXT-FORMAT.md` for the format. Keep CONTEXT.md as a glossary only — no implementation details, no specs.
-
-**Offer ADRs sparingly.** Only when all three are true: (1) hard to reverse, (2) a future reader would wonder why, (3) a real trade-off with genuine alternatives. Use `.specforge/skills/grill-with-docs/ADR-FORMAT.md` for the format.
-
-**Read `LEARNINGS.md`** at the project root before the grill session if it exists — past implementation discoveries may surface constraints or gotchas relevant to the current plan.
-
-**Read `.specforge/NEXT.md`** before asking "what are we building?" If it
-exists, treat it as the starting brief for this iteration. Reflect the brief
-back to the human and ask only for missing load-bearing details.
-
-**Read `.specforge/REGISTRY.md`** if it exists before asking about changed
-requirements. Implemented requirements are historical facts. If the human wants
-to change implemented behavior, capture it as a new requirement for this
-iteration and note the old `REQ-*` ID that it supersedes.
+- **Read `LEARNINGS.md`** at the project root before the session if it exists —
+  past discoveries may surface constraints relevant to the current plan.
+- **Read `.specforge/NEXT.md`** before asking "what are we building?" If it
+  exists, treat it as the starting brief. Reflect the brief back to the human
+  and ask only for missing load-bearing details.
+- **Read `.specforge/REGISTRY.md`** before asking about changed requirements.
+  Implemented requirements are historical facts; changed behavior requires a new
+  `REQ-*` ID that supersedes the old one.
 
 ## Stop rule
 

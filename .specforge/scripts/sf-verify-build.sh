@@ -10,6 +10,8 @@ source "$SCRIPT_DIR/lib/common.sh"
 source "$SCRIPT_DIR/lib/spec.sh"
 # shellcheck source=lib/git.sh
 source "$SCRIPT_DIR/lib/git.sh"
+# shellcheck source=lib/config.sh
+source "$SCRIPT_DIR/lib/config.sh"
 
 ROOT="$(sf_root)"
 SPEC="${1:-}"
@@ -61,9 +63,101 @@ else
   fi
 fi
 
+run_config_command() {
+  local label="$1" dir="$2" cmd="$3"
+  echo "-> [$label] (cd $(sf_relpath "$ROOT" "$dir") && $cmd)"
+  ( cd "$dir" && bash -lc "$cmd" )
+}
+
+run_build_lint() {
+  local cfg="$1" target="$2"
+  local ids build_cmd lint_cmd
+
+  [ -f "$cfg" ] || return 0
+  ids="$(sf_config_project_ids "$cfg")"
+
+  if [ -z "$ids" ]; then
+    build_cmd="$(sf_config_top_value "$cfg" build_command 2>/dev/null || true)"
+    lint_cmd="$(sf_config_top_value "$cfg" lint_command 2>/dev/null || true)"
+    [ -n "$build_cmd" ] && run_config_command build "$target" "$build_cmd" || true
+    [ -n "$lint_cmd" ]  && run_config_command lint  "$target" "$lint_cmd"  || true
+  else
+    for project_id in $ids; do
+      local path dir
+      path="$(sf_config_project_value "$cfg" "$project_id" path 2>/dev/null || true)"
+      dir="$(sf_config_project_dir "$target" "$path")"
+      build_cmd="$(sf_config_project_value "$cfg" "$project_id" build_command 2>/dev/null || true)"
+      lint_cmd="$(sf_config_project_value  "$cfg" "$project_id" lint_command  2>/dev/null || true)"
+      [ -n "$build_cmd" ] && run_config_command "build/$project_id" "$dir" "$build_cmd" || true
+      [ -n "$lint_cmd" ]  && run_config_command "lint/$project_id"  "$dir" "$lint_cmd"  || true
+    done
+  fi
+}
+
+check_undeclared_files() {
+  local spec_file="$1" branch="$2" base="$3"
+  local declared_files changed_files cf undeclared
+
+  declared_files="$(awk '
+    /^## Tests$/ { section=1; next }
+    /^## Implementation$/ { section=1; next }
+    /^## / { section=0; next }
+    section && /^- \[[ x]\]/ {
+      line=$0
+      sub(/^- \[[ x]\][[:space:]]*/, "", line)
+      split(line, parts, " ")
+      if (parts[1] != "") print parts[1]
+    }
+  ' "$spec_file")"
+
+  changed_files="$(git -C "$ROOT" diff --name-only "${base}..${branch}" -- 2>/dev/null || true)"
+  [ -n "$changed_files" ] || return 0
+
+  undeclared=""
+  while IFS= read -r cf; do
+    [ -n "$cf" ] || continue
+    case "$cf" in
+      .specforge/specs/*|.specforge/LEARNINGS.md|.specforge/CONTEXT.md|docs/adr/*) continue ;;
+    esac
+    if ! printf '%s\n' "$declared_files" | grep -qxF "$cf"; then
+      undeclared="${undeclared}  ${cf}
+"
+    fi
+  done <<< "$changed_files"
+
+  if [ -n "$undeclared" ]; then
+    sf_warn "files changed but not declared in $SPEC (scope creep or missing declaration):"
+    printf '%s' "$undeclared" >&2
+  fi
+}
+
 if [ "$ERRORS" -eq 0 ]; then
   ( cd "$TARGET" && bash .specforge/scripts/sf-lint-specs.sh )
   ( cd "$TARGET" && bash .specforge/scripts/sf-test.sh )
+  run_build_lint "$ROOT/.specforge/config.yaml" "$TARGET"
+
+  if [ -n "$SPEC_FILE" ] && sf_branch_exists "$ROOT" "$EXPECTED_BRANCH"; then
+    REVIEW_BASE="$(sf_review_base "$ROOT" "$EXPECTED_BRANCH")"
+    check_undeclared_files "$SPEC_FILE" "$EXPECTED_BRANCH" "$REVIEW_BASE"
+  fi
+
+  # Warn when a ticked checkbox references a file that does not exist in TARGET.
+  if [ -n "$SPEC_FILE" ]; then
+    while IFS= read -r fp; do
+      [ -n "$fp" ] || continue
+      [ -f "$TARGET/$fp" ] || sf_warn "$SPEC: ticked checkbox references missing file: $fp"
+    done < <(awk '
+      /^## Tests$/ { section=1; next }
+      /^## Implementation$/ { section=1; next }
+      /^## / { section=0; next }
+      section && /^- \[x\]/ {
+        line=$0
+        sub(/^- \[x\][[:space:]]*/, "", line)
+        split(line, parts, " ")
+        if (parts[1] != "") print parts[1]
+      }
+    ' "$SPEC_FILE")
+  fi
 fi
 
 if [ "$ERRORS" -gt 0 ]; then

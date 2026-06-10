@@ -31,7 +31,19 @@ active. Do not revise approved plan artifacts.
 - If there is no new requirement, report the next active SPEC action from
   `sf-snapshot.sh` (it prints a `Next:` line).
 
-Stop. Do not align or design a new requirement into the active iteration.
+**If the human explicitly asks to abandon or re-plan the active iteration:**
+
+1. Confirm: "This will archive the current iteration as abandoned and reset
+   the plan artifacts. Any unfinished SPECs will be preserved in the archive
+   but removed from the active workspace. NEXT.md is kept. Proceed?"
+2. On confirmation, run:
+   ```bash
+   bash .specforge/scripts/sf-iteration.sh archive-reset --abandon
+   ```
+3. Continue to State 1b — the human wants to start a new alignment session.
+
+Stop. Do not align or design a new requirement into the active iteration unless
+the human explicitly requested the abandon path above.
 
 ### State 1a — Iteration complete, archive first
 
