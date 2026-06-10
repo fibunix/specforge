@@ -20,9 +20,9 @@ You do not write code or tests. The builder does that.
 
 Read fully: `.specforge/ALIGN.md`, `.specforge/config.yaml`.
 
-Query, don't load: run `bash .specforge/scripts/sf-registry.sh summary` for registry counts; grep a specific `REQ-*` ID when checking for supersedes. Search existing code by component, not whole directories.
+Query, don't load: grep `.specforge/specs/` and `.specforge/iterations/*/specs/` for a specific `REQ-*` ID when checking for supersedes. Search existing code by component, not whole directories.
 
-Never load: `.specforge/iterations/`, full `REGISTRY.md`, `NEXT.md` (design from ALIGN.md only).
+Never load: `.specforge/iterations/` wholesale (grep it for specific `REQ-*` IDs only), `NEXT.md` (design from ALIGN.md only).
 
 ## Inputs you need
 
@@ -36,8 +36,10 @@ If `.specforge/NEXT.md` exists, do not design directly from it. NEXT.md is a
 framing brief for the aligner. The approved ALIGN.md is the only requirements
 contract for the active iteration.
 
-Read `.specforge/REGISTRY.md` if it exists. It summarizes active, implemented,
-and superseded requirements across current and archived iterations.
+Before assigning `REQ-*` IDs, grep `.specforge/specs/` and
+`.specforge/iterations/*/specs/` for existing ones. Active specs hold the
+current iteration's requirements; archived specs hold implemented and
+superseded history (`## Supersedes` sections record the supersession links).
 
 ## DESIGN.md format
 
@@ -105,12 +107,12 @@ A spec with no acceptance criteria is not a spec. A spec that mixes concerns is 
 - **Every requirement maps to tests.** Each test line must include `(covers REQ-...)`, and every requirement must appear in at least one test line.
 - **List dependencies between SPECS** — the order they should be built in. SPEC-002 depends on SPEC-001 means SPEC-002 can't ship without SPEC-001 finalized.
 - **Don't invent requirements.** If the ALIGN.md doesn't say it, ask the human, don't add it.
-- **Prefer file-disjoint specs.** When you can choose how to split work, assign distinct files to each spec. Specs that declare the same file must be implemented sequentially; disjoint specs can run in parallel (`sf wave`). Declare shared files honestly in the SPEC — overlap is serialized, not an error.
+- **Prefer file-disjoint specs.** When you can choose how to split work, assign distinct files to each spec. Specs that declare the same file must be implemented sequentially; disjoint specs can run in parallel (wave planning in the sf-plan skill). Declare shared files honestly in the SPEC — overlap is serialized, not an error.
 - **Respect iteration boundaries.** New requirements that are not in approved
   ALIGN.md belong in the next iteration, not in the active design.
 - **Do not rewrite implemented requirements.** If approved ALIGN.md changes
-  behavior that exists in the registry, create a new `REQ-*` ID and record the
-  old ID in the SPEC `## Supersedes` section.
+  behavior an archived spec already implemented, create a new `REQ-*` ID and
+  record the old ID in the SPEC `## Supersedes` section.
 - **Present a draft DESIGN.md + all SPEC files** at once and ask for approval on the bundle. If the human approves DESIGN.md but requests changes to specific SPECs, update only the affected SPECs and re-present just those for confirmation. Do not restart the full design cycle. Only emit your `[RESULT]` after all parts are confirmed.
 
 ## When the human approves
@@ -121,8 +123,8 @@ A spec with no acceptance criteria is not a spec. A spec that mixes concerns is 
 2. Set `**State:** approved` on every SPEC file in the bundle.
 
 This is the only place in the workflow where specs move from `draft` to
-`approved`. A fresh session — and `sf wave` — trusts these fields, so do not
-emit your `[RESULT]` until they are written.
+`approved`. A fresh session — and wave planning — trusts these fields, so do
+not emit your `[RESULT]` until they are written.
 
 After approval, the human runs `/sf-test SPEC-ID` for each spec, in dependency order, to create red tests for review. After inspecting them with `/sf-review SPEC-ID` and approving those tests, they run `/sf-ship SPEC-ID` to implement. Each SPEC is a separate branch-and-merge cycle. Sequential is the default; parallel is the human's call with optional parallel checkouts.
 

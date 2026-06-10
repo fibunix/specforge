@@ -32,7 +32,7 @@ $hits"
 fi
 
 # ── Scripts: legacy parsing only in sanctioned fallback sites ─────────────────
-allowlist="lib/spec.sh sf-lint-specs.sh sf-registry.sh"
+allowlist="lib/spec.sh sf-lint-specs.sh"
 while IFS= read -r line; do
   [ -n "$line" ] || continue
   file="${line%%:*}"
@@ -48,12 +48,36 @@ done <<EOF
 $(grep -rn 'Build state' "$ROOT/.specforge/scripts" 2>/dev/null || true)
 EOF
 
-# ── Wave must stay bash-3.2 compatible (no associative arrays anywhere) ───────
+# ── Scripts must stay bash-3.2 compatible (no associative arrays anywhere) ────
 hits="$(grep -rn 'declare -A' "$ROOT/.specforge/scripts" "$ROOT/bin" "$ROOT/install.sh" 2>/dev/null || true)"
 if [ -n "$hits" ]; then
   fail "bash-4-only associative arrays found (macOS ships bash 3.2):
 $hits"
 fi
+
+# ── Decision-ladder prose is pinned in the skills ─────────────────────────────
+# Status reasoning and the B2 dependency rule moved from awk into skill prose;
+# these phrases are the prose equivalent of a smoke test — if a skill rewrite
+# drops them, the agent loses the rules the deleted scripts used to encode.
+status_skill="$ROOT/.specforge/skills/sf-status/SKILL.md"
+for phrase in \
+  '## Decision ladder' \
+  'If any spec is `tests-red`' \
+  'If any spec is `done` and its feature branch still exists' \
+  'only when it is `done` \*\*and merged\*\*' \
+  'If any spec is still `draft`'
+do
+  grep -q "$phrase" "$status_skill" || fail "sf-status skill lost ladder phrase: $phrase"
+done
+
+plan_skill="$ROOT/.specforge/skills/sf-plan/SKILL.md"
+for phrase in \
+  '## Wave planning' \
+  'merge-base --is-ancestor' \
+  'pairwise disjoint'
+do
+  grep -q "$phrase" "$plan_skill" || fail "sf-plan skill lost wave phrase: $phrase"
+done
 
 if [ "$failures" -gt 0 ]; then
   echo "$failures vocabulary assertion(s) failed." >&2

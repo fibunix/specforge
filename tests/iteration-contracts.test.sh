@@ -134,9 +134,9 @@ assert_missing "$PROJECT/.specforge/ALIGN.md"
 assert_missing "$PROJECT/.specforge/DESIGN.md"
 assert_missing "$PROJECT/.specforge/specs/SPEC-001-thing.md"
 
-# SUMMARY.md marks status as abandoned
+# Abandon with no agent-authored SUMMARY.md gets a one-line stub
 summary_content="$(cat "$PROJECT/.specforge/iterations/ITER-001-contracts/SUMMARY.md")"
-assert_contains "SUMMARY.md abandoned status" '\*\*Status:\*\* abandoned' "$summary_content"
+assert_contains "SUMMARY.md abandoned stub" 'abandoned .* before all specs were complete' "$summary_content"
 
 # NEXT.md survives (if present)
 cat > "$PROJECT/.specforge/NEXT.md" <<'EOF'
@@ -168,6 +168,13 @@ write_spec 1 approved " " "REQ-C03-001" "ITER-003-contracts"
 lint_out2="$(run_lint 2>&1 || true)"
 assert_not_contains "lint must pass for fresh REQ ID" \
   'reuses an archived' "$lint_out2"
+
+# ── Active SPECs must carry Iteration metadata (lint) ────────────────────────
+sed '/^\*\*Iteration:\*\*/d' "$PROJECT/.specforge/specs/SPEC-001-thing.md" > "$PROJECT/.specforge/specs/SPEC-001-thing.tmp"
+mv "$PROJECT/.specforge/specs/SPEC-001-thing.tmp" "$PROJECT/.specforge/specs/SPEC-001-thing.md"
+if run_lint >/dev/null 2>&1; then
+  fail "lint should require active SPEC iteration metadata"
+fi
 
 if [ "$failures" -gt 0 ]; then
   echo "$failures iteration-contracts assertion(s) failed." >&2

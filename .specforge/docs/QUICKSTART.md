@@ -117,12 +117,13 @@ line in `## Tests`, confirms they are red, sets `State: tests-red`, and commits.
 
 ### 5. Review and approve the red tests
 
-```bash
-sf review SPEC-001
+```text
+/sf-review SPEC-001
 ```
 
-Output shows state, checklist counts, requirements coverage, commits, and
-diffstat. If the tests are right:
+The agent shows state, checklist counts, commits, and diffstat — and reads the
+test bodies to confirm every `REQ-*` is covered by a real test. If the tests
+are right:
 
 ```text
 /sf-ship SPEC-001
@@ -138,13 +139,13 @@ checkboxes, sets `State: done`, and commits. It runs
 
 ### 7. Review and finalize
 
-```bash
-sf review SPEC-001
+```text
+/sf-review SPEC-001
 ```
 
-Review output now includes a requirements coverage table showing every REQ-*
-ID and how many of its test lines are ticked. If any files were changed that
-aren't declared in the SPEC, a warning appears.
+The agent checks every REQ-* against the implementation diff and flags any
+changed files that aren't declared in the SPEC (scope creep or a missing
+declaration).
 
 ```bash
 sf finalize SPEC-001
@@ -161,32 +162,26 @@ After all specs in the iteration are `done` and finalized:
 /sf-plan
 ```
 
-Plan detects the completed iteration, runs `archive-reset`, writes a SUMMARY.md,
-archives the artifacts under `.specforge/iterations/ITER-001-login/`, and
-prompts you to start the next iteration alignment with NEXT.md as the brief.
+Plan detects the completed iteration, writes a SUMMARY.md close-out (what
+shipped, what was learned, what was deferred), runs `archive-reset` to file
+everything under `.specforge/iterations/ITER-001-login/`, and prompts you to
+start the next iteration alignment with NEXT.md as the brief.
 
 ---
 
-## Parallel builds (sf wave)
+## Parallel builds (waves)
 
-When an iteration has multiple independent specs:
-
-```bash
-sf wave
-```
-
-Shows which specs can build concurrently (no file overlap). For each:
+When an iteration has multiple independent specs, ask the agent for a wave
+plan (procedure: sf-plan skill, § Wave planning). Specs with disjoint declared
+file lists can build concurrently. For each wave member:
 
 ```bash
 sf worktree create SPEC-002   # isolated checkout in .worktrees/SPEC-002
 # open a session in .worktrees/SPEC-002 and run /sf-test SPEC-002
 ```
 
-After all specs are done and reviewed:
-
-```bash
-sf wave finalize   # merges all done specs in dependency order
-```
+After all specs are done and reviewed, run `/sf-finalize SPEC-ID` per spec in
+dependency order (use `sf finalize SPEC-ID --rebase` once the base has moved).
 
 ---
 

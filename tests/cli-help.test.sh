@@ -30,11 +30,10 @@ for command in \
   "sf update" \
   "sf doctor" \
   "sf status" \
-  "sf trace" \
+  "sf facts" \
   "sf lint" \
   "sf test" \
   "sf verify" \
-  "sf review" \
   "sf finalize" \
   "sf worktree" \
   "sf help"
@@ -42,8 +41,13 @@ do
   assert_help_contains "$command"
 done
 
+# Interpretation moved agent-side: these commands are gone from the CLI.
 assert_help_not_contains "sf snapshot"
 assert_help_not_contains "sf requirements"
+assert_help_not_contains "sf wave"
+assert_help_not_contains "sf trace"
+assert_help_not_contains "sf review"
+assert_help_not_contains "sf registry"
 
 for command in /sf-plan /sf-test /sf-ship /sf-review /sf-finalize /sf-status; do
   assert_help_contains "$command"

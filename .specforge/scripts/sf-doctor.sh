@@ -127,9 +127,15 @@ check_command_surface() {
     [ -d "$skill_dir" ] || continue
     skill_name="$(basename "$skill_dir")"
     require_file "$skill_dir/SKILL.md" "skill $skill_name"
-    if [ -d "$SF/adapters/opencode/commands" ]; then
-      require_file "$SF/adapters/opencode/commands/$skill_name.md" "opencode command $skill_name"
-    fi
+    # Only sf-* skills are slash commands; internal skills (grill-with-docs)
+    # are read by agents directly and have no command file.
+    case "$skill_name" in
+      sf-*)
+        if [ -d "$SF/adapters/opencode/commands" ]; then
+          require_file "$SF/adapters/opencode/commands/$skill_name.md" "opencode command $skill_name"
+        fi
+        ;;
+    esac
   done
 }
 

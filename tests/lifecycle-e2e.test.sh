@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # End-to-end lifecycle contract: plan -> test -> ship -> finalize -> archive,
-# asserting that sf status stays truthful from the base branch at every step.
+# asserting that sf facts stays truthful from the base branch at every step.
 
 set -euo pipefail
 
@@ -32,8 +32,8 @@ git_p() {
   git -C "$PROJECT" -c user.name=sf-test -c user.email=sf@test "$@"
 }
 
-snapshot() {
-  (cd "$PROJECT" && bash .specforge/scripts/sf-snapshot.sh)
+facts() {
+  (cd "$PROJECT" && bash .specforge/scripts/sf-facts.sh)
 }
 
 write_spec() {
@@ -112,10 +112,10 @@ write_spec 2 approved " "
 git_p add -A
 git_p commit -qm "plan: ITER-001-lifecycle"
 
-# ── Approved plan: next action is the first spec in dependency order ─────────
-out="$(snapshot)"
-assert_contains "snapshot (approved plan)" 'Next: /sf-test SPEC-001' "$out"
-assert_contains "snapshot (approved plan)" 'SPEC-001 +approved' "$out"
+# ── Approved plan: facts show the approved specs from the checkout ───────────
+out="$(facts)"
+assert_contains "facts (approved plan)" 'ALIGN: approved +DESIGN: approved' "$out"
+assert_contains "facts (approved plan)" 'SPEC-001 +state=approved +source=checkout' "$out"
 
 # ── Red tests committed on the feature branch; checkout returns to main ──────
 git_p switch -qc feature/SPEC-001
@@ -125,9 +125,8 @@ git_p add -A
 git_p commit -qm "SPEC-001: red tests"
 git_p switch -q main
 
-out="$(snapshot)"
-assert_contains "snapshot from main (red on branch)" 'SPEC-001 +tests-red' "$out"
-assert_contains "snapshot from main (red on branch)" 'Next: /sf-review SPEC-001 then /sf-ship SPEC-001' "$out"
+out="$(facts)"
+assert_contains "facts from main (red on branch)" 'SPEC-001 +state=tests-red +source=branch +branch=exists' "$out"
 
 # ── Implementation done on the branch; main still sees the truth ──────────────
 git_p switch -q feature/SPEC-001
@@ -138,9 +137,8 @@ git_p add -A
 git_p commit -qm "SPEC-001: implement"
 git_p switch -q main
 
-out="$(snapshot)"
-assert_contains "snapshot from main (done on branch)" 'SPEC-001 +done' "$out"
-assert_contains "snapshot from main (done on branch)" 'Next: /sf-review SPEC-001 then /sf-finalize SPEC-001' "$out"
+out="$(facts)"
+assert_contains "facts from main (done on branch)" 'SPEC-001 +state=done +source=branch +branch=exists' "$out"
 
 # Doctor flags the in-flight branch.
 out="$( (cd "$PROJECT" && bash .specforge/scripts/sf-doctor.sh) 2>&1 || true)"
@@ -158,8 +156,9 @@ fi
 [ "$(git -C "$PROJECT" symbolic-ref --short HEAD)" = "main" ] || fail "finalize should land on main"
 [ -f "$PROJECT/src/t1.sh" ] || fail "implementation should be merged into main"
 
-out="$(snapshot)"
-assert_contains "snapshot after finalize" 'Next: /sf-test SPEC-002' "$out"
+out="$(facts)"
+assert_contains "facts after finalize" 'SPEC-001 +state=done +source=checkout +branch=missing' "$out"
+assert_contains "facts after finalize" 'SPEC-002 +state=approved' "$out"
 
 # ── Complete SPEC-002 directly (same flow, condensed) ─────────────────────────
 git_p switch -qc feature/SPEC-002
@@ -172,9 +171,11 @@ git_p commit -qm "SPEC-002: implement"
   GIT_COMMITTER_NAME=sf-test GIT_COMMITTER_EMAIL=sf@test \
   bash .specforge/scripts/sf-finalize.sh SPEC-002 >/dev/null)
 
-# ── All done: queued NEXT.md steers the next-iteration message ────────────────
-out="$(snapshot)"
-assert_contains "snapshot all done" 'Next: all done — run /sf-plan to frame the next iteration' "$out"
+# ── All done: facts report both specs done, queue state in the header ────────
+out="$(facts)"
+assert_contains "facts all done" 'SPEC-001 +state=done' "$out"
+assert_contains "facts all done" 'SPEC-002 +state=done' "$out"
+assert_contains "facts all done" 'NEXT\.md: missing' "$out"
 
 cat > "$PROJECT/.specforge/NEXT.md" <<'EOF'
 # Next iteration — queued requirements
@@ -186,8 +187,8 @@ cat > "$PROJECT/.specforge/NEXT.md" <<'EOF'
 - CSV export: needed for reporting, high priority
 EOF
 
-out="$(snapshot)"
-assert_contains "snapshot with queued NEXT.md" 'Next: all done — run /sf-plan to start the queued next iteration' "$out"
+out="$(facts)"
+assert_contains "facts with queued NEXT.md" 'NEXT\.md: queued' "$out"
 
 # Queued NEXT.md must not poison lint (it has no Iteration field, and it is
 # excluded from active-iteration resolution either way).
@@ -204,15 +205,40 @@ fi
 grep -v '^\*\*Iteration:\*\*' "$PROJECT/.specforge/NEXT.md" > "$PROJECT/.specforge/NEXT.md.tmp"
 mv "$PROJECT/.specforge/NEXT.md.tmp" "$PROJECT/.specforge/NEXT.md"
 
-# ── Archive: NEXT.md survives, archive carries the iteration's own ID ─────────
+# ── Archive: agent-authored SUMMARY.md is required and moved into the archive ─
+if (cd "$PROJECT" && bash .specforge/scripts/sf-iteration.sh archive-reset >/dev/null 2>&1); then
+  fail "archive-reset should refuse to run without .specforge/SUMMARY.md"
+fi
+
+cat > "$PROJECT/.specforge/SUMMARY.md" <<'EOF'
+# ITER-001-lifecycle — Iteration summary
+
+**Archived:** 2026-06-09
+
+## What shipped
+
+- SPEC-001 — thing one, end to end
+- SPEC-002 — thing two
+
+## What was learned
+
+- nothing notable
+
+## Deferred / follow-ups
+
+- nothing deferred
+EOF
+
 (cd "$PROJECT" && bash .specforge/scripts/sf-iteration.sh archive-reset >/dev/null)
 
 [ -f "$PROJECT/.specforge/NEXT.md" ] || fail "NEXT.md should survive archive-reset"
 [ -d "$PROJECT/.specforge/iterations/ITER-001-lifecycle" ] || fail "archive should be named ITER-001-lifecycle"
-[ -f "$PROJECT/.specforge/iterations/ITER-001-lifecycle/SUMMARY.md" ] || fail "archive should contain SUMMARY.md"
+[ ! -f "$PROJECT/.specforge/SUMMARY.md" ] || fail "SUMMARY.md should be moved out of the workspace"
+grep -q 'thing one, end to end' "$PROJECT/.specforge/iterations/ITER-001-lifecycle/SUMMARY.md" \
+  || fail "archive should contain the agent-authored SUMMARY.md verbatim"
 
-out="$(snapshot)"
-assert_contains "snapshot after archive" 'Next: /sf-plan' "$out"
+out="$(facts)"
+assert_contains "facts after archive" 'ALIGN: missing' "$out"
 
 if [ "$failures" -gt 0 ]; then
   echo "$failures lifecycle-e2e assertion(s) failed." >&2

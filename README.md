@@ -49,8 +49,8 @@ source_dir: src
 For monorepos, define `projects:` in the same file.
 
 If your base branch is not `main`, `master`, `trunk`, or `develop`, set the
-`SPECFORGE_BASE_BRANCH` environment variable so that `sf finalize` and
-`sf wave finalize` can find it:
+`SPECFORGE_BASE_BRANCH` environment variable so that `sf finalize` can find
+it:
 
 ```bash
 export SPECFORGE_BASE_BRANCH=release
@@ -112,11 +112,7 @@ Inspect the diff with `/sf-review SPEC-ID`. Finalize with `/sf-finalize SPEC-ID`
 
 ### Parallel work
 
-```bash
-sf wave
-```
-
-`sf wave` computes which ready specs can be built concurrently (disjoint file sets). Open one session per worktree and run the normal flow in each. Use `sf finalize SPEC-ID --rebase` when the base branch has moved.
+Ask the agent for a wave plan (the procedure is in the sf-plan skill). Ready specs with disjoint declared file sets can be built concurrently. Open one session per worktree (`sf worktree create SPEC-ID`) and run the normal flow in each. Use `sf finalize SPEC-ID --rebase` when the base branch has moved.
 
 ## Update
 
@@ -139,14 +135,19 @@ sf update
 sf update --dry-run
 sf update
 sf doctor
-sf status
-sf trace
+sf status        # alias: sf facts — dumps plan + per-SPEC facts
 sf test
 sf lint
-sf wave
-sf review SPEC-ID [--patch]
+sf verify SPEC-ID
 sf finalize SPEC-ID [--dry-run] [--rebase]
+sf queue "requirement text"
+sf worktree create|merge SPEC-ID
+sf iteration abandon
 ```
+
+Scripts enforce, agents interpret: status reasoning, wave planning, review
+judgment, and requirement traceability live in the skills (`/sf-status`,
+`/sf-plan`, `/sf-review`), not in the CLI.
 
 ## Rules
 

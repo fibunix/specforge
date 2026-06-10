@@ -90,7 +90,7 @@ Each transition has exactly one owner:
 
 - `draft` — the Designer is working on it.
 - `draft -> approved` — the **Designer** sets this when the human approves the
-  design bundle. It records the Plan gate on disk; builders and `sf wave`
+  design bundle. It records the Plan gate on disk; builders and wave planning
   trust it.
 - `approved -> tests-red` — the **Builder** sets this during `/sf-test`, after
   tests are written, confirmed failing for the expected reason, and committed.
@@ -116,29 +116,32 @@ The builder ticks boxes as it works. Format:
 - `- [x]` = done, passing test
 - `- [ ]` = pending, or skipped (with human approval)
 
-A SPEC is "done" when every acceptance-criteria box is ticked AND every Tests and Implementation box is ticked. `bash .specforge/scripts/sf-snapshot.sh` reads these.
+A SPEC is "done" when every acceptance-criteria box is ticked AND every Tests and Implementation box is ticked. `bash .specforge/scripts/sf-facts.sh` reads these.
+
+## Parsing contract
+
+Scripts read only `**State:**` and `**Iteration:**`; everything else in a spec
+is for humans and agents. (Checkbox counts are tallied for display and the
+done-gate, and `sf lint` checks the contract shape — but no script makes a
+decision from any other field.) Evolving the format costs a sentence in this
+doc, not an awk rewrite.
 
 ## Requirement traceability
 
-Run this to see which requirements were implemented:
+Traceability questions are retrieval questions; ask the agent, or grep the
+spec files yourself:
 
 ```bash
-sf trace
+grep -rn "REQ-AUTH-002" .specforge/specs/ .specforge/iterations/*/specs/
 ```
 
-The trace report is generated from active SPEC files and archived iteration
-SPEC files. It also refreshes `.specforge/REGISTRY.md` and
-`.specforge/registry.json`.
+Requirement status is derived from where the ID lives:
 
-Registry status meanings:
-
-- `active` — requirement is in the current active iteration and is not done.
-- `implemented` — requirement is done and remains part of product history.
-- `superseded` — requirement was implemented, but a later requirement replaces
-  or changes its behavior.
-
-The registry is generated state. Do not edit it directly; edit SPECS and rerun
-`sf trace`.
+- **active** — in a current `.specforge/specs/` file that is not done.
+- **implemented** — in a done spec (active or archived); part of product
+  history.
+- **superseded** — listed on the left side of a `## Supersedes` entry in a
+  later spec.
 
 ## SPEC linting
 

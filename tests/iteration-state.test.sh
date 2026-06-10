@@ -120,17 +120,38 @@ if ! grep -Eq "NEXT.md: queued" <<<"$status_output"; then
   fail "iteration status should report queued NEXT.md"
 fi
 
+# The close-out is agent-authored: archive-reset refuses without it.
+if archive_err="$(run_iteration archive-reset --id ITER-test 2>&1)"; then
+  fail "archive-reset should refuse without .specforge/SUMMARY.md"
+elif ! grep -q "SUMMARY.md" <<<"$archive_err"; then
+  fail "missing-summary error should name SUMMARY.md"
+fi
+
+write_summary() {
+  cat > "$PROJECT/.specforge/SUMMARY.md" <<'EOF'
+# ITER-test — Iteration summary
+
+## What shipped
+
+- SPEC-001 — the archive contract itself
+EOF
+}
+
+write_summary
 run_iteration archive-reset --id ITER-test >/dev/null
 
 assert_exists "$PROJECT/.specforge/iterations/ITER-test/ALIGN.md"
 assert_exists "$PROJECT/.specforge/iterations/ITER-test/DESIGN.md"
-assert_exists "$PROJECT/.specforge/iterations/ITER-test/SUMMARY.md"
 assert_exists "$PROJECT/.specforge/iterations/ITER-test/specs/SPEC-001.md"
-assert_exists "$PROJECT/.specforge/REGISTRY.md"
-assert_exists "$PROJECT/.specforge/registry.json"
 assert_missing "$PROJECT/.specforge/ALIGN.md"
 assert_missing "$PROJECT/.specforge/DESIGN.md"
 assert_missing "$PROJECT/.specforge/specs/SPEC-001.md"
+
+# The agent-authored summary is moved into the archive verbatim.
+assert_missing "$PROJECT/.specforge/SUMMARY.md"
+if ! grep -q "the archive contract itself" "$PROJECT/.specforge/iterations/ITER-test/SUMMARY.md"; then
+  fail "archived SUMMARY.md should be the agent-authored file"
+fi
 
 # NEXT.md is the next iteration's input: it must survive archive-reset and
 # must not be filed into the completed iteration's archive.
@@ -139,6 +160,7 @@ assert_missing "$PROJECT/.specforge/iterations/ITER-test/NEXT.md"
 
 write_plan
 write_done_spec
+write_summary
 if run_iteration archive-reset --id ITER-test >/dev/null 2>&1; then
   fail "archive-reset should refuse to overwrite an existing archive"
 fi

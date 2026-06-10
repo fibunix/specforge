@@ -47,12 +47,11 @@ Spec-driven, TDD-first development. One shared understanding, one source of trut
 - Active plan artifacts: `.specforge/ALIGN.md`, `.specforge/DESIGN.md`, `.specforge/specs/SPEC-*.md`
 - Next-iteration brief: `.specforge/NEXT.md`
 - Completed iteration archives: `.specforge/iterations/ITER-*`
-- Generated requirement registry: `.specforge/REGISTRY.md`, `.specforge/registry.json`
 - Agent manuals: `.specforge/agents/*.md`
 - Phase skills: `.specforge/skills/*/SKILL.md`
 - Flow reference: `.specforge/docs/FLOW.md`
 - Project config: `.specforge/config.yaml`
 
-Active plan artifacts describe only the current iteration. Use the generated
-registry and archived iterations to inspect implemented or superseded history.
+Active plan artifacts describe only the current iteration. Grep archived
+iteration specs to inspect implemented or superseded history.
 <!-- END SPECFORGE MANAGED BLOCK v1 -->

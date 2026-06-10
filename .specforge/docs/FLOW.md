@@ -24,10 +24,10 @@ iteration's input brief.
 Every active plan artifact except NEXT.md carries the same
 `**Iteration:** ITER-NNN-<slug>` value (NEXT.md describes the *next* iteration
 and gets its ID when that iteration is aligned). Completed iterations are
-archived under `.specforge/iterations/<ITER-ID>/` with a generated SUMMARY.md
-close-out, and generated registry files (`.specforge/REGISTRY.md`,
-`.specforge/registry.json`) summarize active, implemented, and superseded
-requirements across current and archived specs.
+archived under `.specforge/iterations/<ITER-ID>/` with an agent-authored
+SUMMARY.md close-out. The spec files themselves — active and archived — are
+the requirement history: grep them for `REQ-*` IDs to find implemented and
+superseded requirements.
 
 Framework updates are separate from feature work. Use `sf update --dry-run`
 or the curl installer with `--update --dry-run`; update only framework-owned
@@ -147,18 +147,13 @@ Status and traceability:
 ```
 
 Use it to inspect phase state, per-SPEC checkboxes, and requirement
-traceability. The per-SPEC State is read from the most-advanced copy of each
-spec (worktree, feature branch, or checkout), so the table is truthful while
-work is in flight on a branch, and the output ends with a computed `Next:`
-line naming the exact next command.
-
-```bash
-sf trace
-```
-
-`sf trace` reads active specs and archived iteration specs, refreshes
-`.specforge/REGISTRY.md` and `.specforge/registry.json`, and prints a
-requirement table.
+traceability. `sf facts` (also `sf status`) dumps the raw facts — per-SPEC
+State is read from the most-advanced copy of each spec (worktree, feature
+branch, or checkout), so it is truthful while work is in flight on a branch.
+The agent applies the decision ladder in the sf-status skill to recommend the
+next command. For traceability questions ("where is REQ-X implemented? what
+supersedes it?"), the agent greps `.specforge/specs/` and
+`.specforge/iterations/*/specs/` and answers from the spec files directly.
 
 ## Requirement Changes
 
@@ -167,21 +162,17 @@ requirement is done:
 
 1. Keep the old archived `REQ-*` ID unchanged.
 2. Create a new `REQ-*` ID in the active iteration.
-3. Link the change in the new SPEC `## Supersedes` section.
-4. Let `sf trace` mark the old requirement as `superseded` in the registry.
+3. Link the change in the new SPEC `## Supersedes` section — that link *is*
+   the supersession record; there is no separate registry to update.
 
 ## Parallel Work
 
-Use `sf wave` to compute what can run concurrently without file conflicts:
-
-```bash
-sf wave
-```
-
-`sf wave` reads each active SPEC's declared `## Tests` and `## Implementation`
-file lists, intersects them across all ready specs, and prints a wave plan:
-specs with disjoint file sets are safe to implement in parallel; overlapping
-specs are serialized.
+Ask the agent for a wave plan (the procedure lives in the sf-plan skill,
+§ Wave planning). It reads each ready SPEC's declared `## Tests` and
+`## Implementation` file lists: specs with disjoint file sets are safe to
+implement in parallel; overlapping specs are serialized, and a dependency
+counts as satisfied only when it is done and merged. Waves are advisory —
+merge gates and tests still catch a wrong grouping.
 
 Parallel execution: open one session per worktree (`sf worktree create SPEC-ID`)
 and run the normal `/sf-test` → `/sf-review` → `/sf-ship` loop in each. All
@@ -226,13 +217,12 @@ Rules:
 - Active plan artifacts: `.specforge/ALIGN.md`, `.specforge/DESIGN.md`, `.specforge/specs/SPEC-*.md`
 - Next-iteration brief: `.specforge/NEXT.md`
 - Completed iteration archives: `.specforge/iterations/ITER-*`
-- Generated requirement registry: `.specforge/REGISTRY.md`, `.specforge/registry.json`
 - Agent manuals: `.specforge/agents/*.md`
 - Phase skills: `.specforge/skills/*/SKILL.md`
 - Project config: `.specforge/config.yaml`
 
-Active plan artifacts describe only the current iteration. Use the generated
-registry and archived iterations to inspect implemented or superseded history.
+Active plan artifacts describe only the current iteration. Grep archived
+iteration specs to inspect implemented or superseded history.
 
 ## Never Do This
 

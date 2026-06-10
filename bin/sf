@@ -5,19 +5,16 @@
 #   sf init [--ide <ide>]                Bootstrap SpecForge in current project
 #   sf update [--dry-run]                Update framework files and managed instructions
 #   sf doctor                            Check install/config/adapter health
-#   sf status                            Show phase, queued next work, and per-SPEC status
+#   sf status                            Dump plan-artifact status and per-SPEC facts
+#   sf facts                             Alias for 'sf status'
 #   sf test [PROJECT-ID]                 Run configured test command(s)
 #   sf verify SPEC-ID                    Verify a build branch before review/merge
-#   sf review SPEC-ID [--patch]          Show review summary and diffstat for a spec
 #   sf finalize SPEC-ID [--dry-run]      Verify, merge, and clean up a completed spec
 #   sf finalize SPEC-ID --rebase         Rebase onto base branch then ff-merge
 #   sf iteration abandon                 Abandon the active iteration and archive it
 #   sf queue "requirement text"          Append a bullet to NEXT.md (creates it if absent)
 #   sf worktree create SPEC-ID           Optional: create a parallel checkout
 #   sf worktree merge SPEC-ID            Optional: merge a parallel checkout
-#   sf wave                              Show parallel-safe spec wave plan
-#   sf wave finalize                     Finalize all done specs in the current wave
-#   sf trace                             Show requirement traceability from active and archived SPECS
 #   sf lint                              Validate SPEC quality
 #   sf help                              Show this help
 #
@@ -61,10 +58,10 @@ Usage:
   sf init [--ide <ide>]                Bootstrap SpecForge in current project
   sf update [--dry-run]                Update framework files and managed instructions
   sf doctor                            Check install/config/adapter health
-  sf status                            Show phase, queued next work, and per-SPEC status
+  sf status                            Dump plan-artifact status and per-SPEC facts
+  sf facts                             Alias for 'sf status'
   sf test [PROJECT-ID]                 Run configured test command(s)
   sf verify SPEC-ID                    Verify a build branch before review/merge
-  sf review SPEC-ID [--patch]          Show review summary and diffstat for a spec
   sf finalize SPEC-ID                  Verify, merge, and clean up a completed spec
   sf finalize SPEC-ID --dry-run        Verify and check merge without changing state
   sf finalize SPEC-ID --rebase         Rebase onto base branch, rerun tests, then ff-merge
@@ -73,9 +70,6 @@ Usage:
   sf worktree create SPEC-ID           Optional: create a parallel checkout
   sf worktree merge SPEC-ID            Optional: merge a parallel checkout
   sf worktree merge SPEC-ID --dry-run  Check whether a parallel checkout can fast-forward
-  sf wave                              Show which ready specs can run in parallel
-  sf wave finalize                     Finalize all done specs of the current wave in order
-  sf trace                             Show requirement traceability from active and archived SPECS
   sf lint                              Validate SPEC quality
   sf help                              Show this help
 
@@ -91,7 +85,10 @@ Use the slash commands in your editor for the full workflow:
   /sf-review ID   Inspect committed tests or implementation changes
   /sf-ship ID     Implement after test approval
   /sf-finalize ID Verify, merge, and clean up after review
-  /sf-status      Same as 'sf status'
+  /sf-status      Facts from 'sf status' plus the agent's next-action reasoning
+
+Wave planning, review judgment, and requirement traceability are agent-side:
+run /sf-plan, /sf-review, or ask the agent — scripts enforce, agents interpret.
 HELP
 }
 
@@ -169,16 +166,10 @@ case "$COMMAND" in
     bash "$SF/scripts/sf-doctor.sh"
     ;;
 
-  # ── status ──
-  status|snapshot)
+  # ── status / facts ──
+  status|facts)
     require_sf
-    bash "$SF/scripts/sf-snapshot.sh"
-    ;;
-
-  # ── trace ──
-  trace|requirements)
-    require_sf
-    bash "$SF/scripts/sf-trace.sh"
+    bash "$SF/scripts/sf-facts.sh"
     ;;
 
   # ── lint ──
@@ -197,12 +188,6 @@ case "$COMMAND" in
   verify)
     require_sf
     bash "$SF/scripts/sf-verify-build.sh" "$@"
-    ;;
-
-  # ── review ──
-  review)
-    require_sf
-    bash "$SF/scripts/sf-review.sh" "$@"
     ;;
 
   # ── finalize ──
@@ -240,10 +225,12 @@ case "$COMMAND" in
     bash "$SF/scripts/sf-worktree.sh" "$@"
     ;;
 
-  # ── wave ──
-  wave)
-    require_sf
-    bash "$SF/scripts/sf-wave.sh" "$@"
+  # ── removed commands ──
+  wave|trace|requirements|review|snapshot)
+    echo "'sf $COMMAND' was removed: that judgment is agent-side now." >&2
+    echo "Use /sf-plan for wave planning, /sf-review for review, /sf-status for status," >&2
+    echo "or grep .specforge/specs/ and .specforge/iterations/*/specs/ for traceability." >&2
+    exit 1
     ;;
 
   # ── help ──

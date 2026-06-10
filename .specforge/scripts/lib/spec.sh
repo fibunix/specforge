@@ -322,36 +322,3 @@ sf_spec_effective_state() {
   local tmpdir="$3"
   sf_spec_state "$(sf_spec_effective_file "$root" "$spec" "$tmpdir")"
 }
-
-# SPEC IDs in DESIGN.md "SPECS produced" table order (build order).
-sf_design_spec_order() {
-  local root="$1"
-  local design="$root/.specforge/DESIGN.md"
-  [ -f "$design" ] || return 0
-  awk '
-    /^\| *SPEC-[A-Z0-9]/ {
-      split($0, cols, "|")
-      row_id=cols[2]; gsub(/[[:space:]]/, "", row_id)
-      if (row_id ~ /^SPEC-/) print row_id
-    }
-  ' "$design"
-}
-
-# Dependencies of one SPEC from the DESIGN.md "SPECS produced" table.
-sf_design_spec_deps() {
-  local root="$1"
-  local spec_id="$2"
-  local design="$root/.specforge/DESIGN.md"
-  [ -f "$design" ] || return 0
-  awk -v id="$spec_id" '
-    /^\| *SPEC-[A-Z0-9]/ {
-      split($0, cols, "|")
-      row_id=cols[2]; gsub(/[[:space:]]/, "", row_id)
-      deps=cols[4];   gsub(/[[:space:]]/, "", deps)
-      if (row_id == id && deps != "—" && deps != "-" && deps != "") {
-        gsub(/,/, " ", deps)
-        print deps
-      }
-    }
-  ' "$design"
-}

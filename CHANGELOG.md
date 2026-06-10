@@ -8,6 +8,40 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### Removed — scripts enforce, agents interpret
+
+The markdown-interpretation layer (~1,400 lines of awk-over-markdown, where
+every confirmed bug so far lived) moved into skill prose; the enforcement
+layer (test runner, lint, verify, finalize, archive mechanics) is unchanged.
+
+- `sf wave` / `sf-wave.sh` — wave planning is now prose in the sf-plan skill
+  (§ Wave planning), including the done-but-unmerged-dependency rule.
+- `sf review` / `sf-review.sh` — the sf-review skill drives git directly and
+  reads test bodies instead of counting `(covers)` annotations.
+- `sf trace` / `sf-trace.sh` and `sf-registry.sh` with the generated
+  `.specforge/REGISTRY.md` / `registry.json` — traceability is answered by
+  grepping `.specforge/specs/` and `.specforge/iterations/*/specs/` directly.
+- `sf-snapshot.sh` — replaced by `sf facts` (below); the five-rung `Next:`
+  priority ladder moved verbatim into the sf-status skill.
+- `lib/spec.sh` DESIGN-table parsers (`sf_design_spec_order`,
+  `sf_design_spec_deps`) — the agent reads the SPECS table itself.
+- `sf-verify-build.sh` undeclared-files warning — scope judgment belongs to
+  the review skill; the deterministic ticked-file-exists backstop stays.
+
+### Added
+
+- `sf facts` (alias of `sf status`): a thin fact dump — plan-artifact status
+  plus one line per SPEC (state, source, branch, checkbox counts), each read
+  from the spec's most-advanced copy. Facts only; no `Next:` line.
+- Agent-authored iteration close-outs: `archive-reset` now requires
+  `.specforge/SUMMARY.md` (template: `.specforge/templates/SUMMARY.md`),
+  written by the agent before archiving; `--abandon` writes a one-line stub
+  when none exists.
+- SPEC-FORMAT.md parsing contract: scripts read only `**State:**` and
+  `**Iteration:**`; everything else in a spec is for humans and agents.
+- Vocabulary test now pins the decision-ladder and wave-planning prose in the
+  skills (the prose equivalent of a smoke test).
+
 ### Fixed
 
 - `sf wave` no longer crashes on macOS default bash (3.2): rewritten without associative arrays.

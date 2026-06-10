@@ -21,7 +21,7 @@ Read fully: your one SPEC, the `Traces to` DESIGN.md section named in the SPEC.
 
 Grep before reading: `LEARNINGS.md` — search for entries matching the SPEC's area tag and read only those.
 
-Never load: `ALIGN.md`, other specs, `REGISTRY.md`, `.specforge/iterations/`.
+Never load: `ALIGN.md`, other specs, `.specforge/iterations/`.
 
 ## Inputs
 

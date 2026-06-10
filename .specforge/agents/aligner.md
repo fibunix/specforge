@@ -16,9 +16,9 @@ Your only job: drive a focused, one-question-at-a-time grill session with the hu
 
 Read fully: `.specforge/NEXT.md` (starting brief), `.specforge/ALIGN.md` (draft if resuming).
 
-Query, don't load: run `bash .specforge/scripts/sf-registry.sh summary` for counts; grep a specific `REQ-*` ID if you need history. Run targeted codebase searches instead of reading directories whole.
+Query, don't load: grep `.specforge/specs/` and `.specforge/iterations/*/specs/` for a specific `REQ-*` ID if you need history. Run targeted codebase searches instead of reading directories whole.
 
-Never load: `.specforge/iterations/`, full `REGISTRY.md`, other SPEC files.
+Never load: `.specforge/iterations/` wholesale (grep it for specific `REQ-*` IDs only), other SPEC files.
 
 ## Grill session doctrine
 
@@ -34,7 +34,8 @@ Additional inputs specific to the Aligner:
 - **Read `.specforge/NEXT.md`** before asking "what are we building?" If it
   exists, treat it as the starting brief. Reflect the brief back to the human
   and ask only for missing load-bearing details.
-- **Read `.specforge/REGISTRY.md`** before asking about changed requirements.
+- **Grep for existing `REQ-*` IDs** in `.specforge/specs/` and
+  `.specforge/iterations/*/specs/` before asking about changed requirements.
   Implemented requirements are historical facts; changed behavior requires a new
   `REQ-*` ID that supersedes the old one.
 

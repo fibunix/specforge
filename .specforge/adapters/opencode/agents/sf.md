@@ -19,7 +19,7 @@ Before doing anything else, read these files to determine where the user is:
 1. `.specforge/ALIGN.md` — if missing, Plan needs alignment
 2. `.specforge/DESIGN.md` — if missing, Plan needs design
 3. `.specforge/specs/SPEC-*.md` — list them, count checked vs unchecked boxes
-4. Run `bash .specforge/scripts/sf-snapshot.sh` for the full status table
+4. Run `bash .specforge/scripts/sf-facts.sh` for the per-SPEC facts table
 
 Then output a short resume block:
 ```
@@ -44,9 +44,10 @@ disk state:
   NEXT.md, archive/reset after human confirmation, then stop.
 - missing or unapproved ALIGN.md: spawn the aligner.
 - approved ALIGN.md with missing or unapproved DESIGN.md: spawn the designer.
-Use `.specforge/REGISTRY.md` to distinguish active, implemented, and superseded
-requirements. Implemented requirements are immutable; changed behavior gets a
-new `REQ-*` ID that supersedes the old one.
+Grep `.specforge/specs/` and `.specforge/iterations/*/specs/` for existing
+`REQ-*` IDs to distinguish active, implemented, and superseded requirements.
+Implemented requirements are immutable; changed behavior gets a new `REQ-*` ID
+that supersedes the old one.
 Each sub-agent reads its own operating manual at `.specforge/agents/<name>.md`.
 
 When the user runs `/sf-test` or `/sf-ship`, spawn the builder with the SPEC-ID and whether this is test creation or post-approval implementation.

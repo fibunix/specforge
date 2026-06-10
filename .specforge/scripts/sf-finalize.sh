@@ -73,14 +73,14 @@ if [ -n "$PARALLEL_CHECKOUT" ] && [ "$PARALLEL_CHECKOUT" != "$ROOT" ]; then
     echo "2/2 Rebasing onto $BASE_BRANCH and merging optional parallel checkout..."
     rebase_and_merge_parallel "$ROOT" "$BRANCH" "$BASE_BRANCH" "$SPEC" "$PARALLEL_CHECKOUT"
     echo ""
-    ( cd "$ROOT" && bash .specforge/scripts/sf-snapshot.sh )
+    ( cd "$ROOT" && bash .specforge/scripts/sf-facts.sh )
     exit 0
   fi
 
   echo "2/2 Merging and cleaning up optional parallel checkout..."
   ( cd "$ROOT" && bash .specforge/scripts/sf-worktree.sh merge "$SPEC" )
   echo ""
-  ( cd "$ROOT" && bash .specforge/scripts/sf-snapshot.sh )
+  ( cd "$ROOT" && bash .specforge/scripts/sf-facts.sh )
   exit 0
 fi
 
@@ -117,7 +117,7 @@ Then re-run: sf finalize $SPEC"
   git -C "$ROOT" branch -d "$BRANCH" >/dev/null
   echo "Rebased and merged $BRANCH into $BASE_BRANCH."
   echo ""
-  ( cd "$ROOT" && bash .specforge/scripts/sf-snapshot.sh )
+  ( cd "$ROOT" && bash .specforge/scripts/sf-facts.sh )
   exit 0
 fi
 
@@ -135,4 +135,4 @@ git -C "$ROOT" branch -d "$BRANCH" >/dev/null
 
 echo "Merged $BRANCH into $BASE_BRANCH and deleted the feature branch."
 echo ""
-( cd "$ROOT" && bash .specforge/scripts/sf-snapshot.sh )
+( cd "$ROOT" && bash .specforge/scripts/sf-facts.sh )
