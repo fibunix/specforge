@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# sf-worktree.sh - Optional parallel checkout lifecycle for one SPEC.
+# sf-worktree.sh - Isolated worktree lifecycle for one SPEC.
 
 set -euo pipefail
 
@@ -26,7 +26,10 @@ WT="$(sf_default_worktree_for_spec "$ROOT" "$SPEC")"
 
 create_worktree() {
   cd "$ROOT"
-  [ ! -d "$WT" ] || sf_die "parallel checkout already exists at $WT"
+  if [ -d "$WT" ]; then
+    echo "worktree already exists: $WT (branch: $BRANCH)"
+    return 0
+  fi
 
   mkdir -p "$ROOT/.worktrees"
   touch "$ROOT/.gitignore"
@@ -35,7 +38,7 @@ create_worktree() {
   git show-ref --verify --quiet "refs/heads/$BRANCH" || git branch "$BRANCH"
   git worktree add "$WT" "$BRANCH"
 
-  echo "parallel checkout ready: $WT (branch: $BRANCH)"
+  echo "worktree ready: $WT (branch: $BRANCH)"
   echo "next: /sf-test $SPEC_ID"
 }
 
@@ -51,11 +54,11 @@ ensure_clean_or_commit() {
     return 0
   fi
 
-  sf_die "parallel checkout has pending changes. Review and commit them first."
+  sf_die "worktree has pending changes. Review and commit them first."
 }
 
 merge_worktree() {
-  [ -d "$WT" ] || sf_die "no parallel checkout at $WT"
+  [ -d "$WT" ] || sf_die "no worktree at $WT"
 
   cd "$WT"
   ensure_clean_or_commit
@@ -70,7 +73,7 @@ merge_worktree() {
   git merge --ff-only "$BRANCH" >/dev/null 2>&1 || sf_die "fast-forward merge failed; resolve manually in $WT"
   git worktree remove --force "$WT"
   git branch -d "$BRANCH" 2>/dev/null || git branch -D "$BRANCH"
-  echo "merged $BRANCH into $(sf_current_branch "$ROOT") and cleaned up the parallel checkout"
+  echo "merged $BRANCH into $(sf_current_branch "$ROOT") and cleaned up the worktree"
 }
 
 case "$ACTION" in

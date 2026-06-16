@@ -19,16 +19,7 @@ SPEC="${1:-}"
 
 SPEC_ID="$(sf_spec_id_from_name "$SPEC")"
 EXPECTED_BRANCH="$(sf_branch_for_spec "$SPEC_ID")"
-CURRENT_BRANCH="$(sf_current_branch "$ROOT")"
-PARALLEL_CHECKOUT="$(sf_worktree_for_branch "$ROOT" "$EXPECTED_BRANCH" 2>/dev/null || true)"
-
-if [ "$CURRENT_BRANCH" = "$EXPECTED_BRANCH" ]; then
-  TARGET="$ROOT"
-elif [ -n "$PARALLEL_CHECKOUT" ]; then
-  TARGET="$PARALLEL_CHECKOUT"
-else
-  TARGET=""
-fi
+TARGET="$(sf_worktree_for_branch "$ROOT" "$EXPECTED_BRANCH" 2>/dev/null || true)"
 SPEC_FILE=""
 ERRORS=0
 
@@ -40,7 +31,7 @@ fail_check() {
 echo "Verifying $SPEC"
 
 if [ -z "$TARGET" ]; then
-  fail_check "checkout must be on $EXPECTED_BRANCH, or use an optional parallel checkout for that branch"
+  fail_check "no worktree found for $SPEC. Create one: sf worktree create $SPEC"
 elif [ ! -d "$TARGET" ]; then
   fail_check "checkout missing: $TARGET"
 elif ! SPEC_FILE="$(sf_resolve_spec_file "$TARGET" "$SPEC")"; then

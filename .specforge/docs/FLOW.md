@@ -77,14 +77,15 @@ Command:
 
 Process:
 
-1. Create or switch to `feature/SPEC-ID` in the current checkout.
-2. Read the SPEC.
-3. Write the listed tests.
-4. Run `bash .specforge/scripts/sf-test.sh`.
-5. Confirm the tests fail for the expected reason.
-6. Set `**State:** tests-red`.
-7. Commit: `git commit -m "SPEC-ID: red tests"`.
-8. Stop.
+1. Create a worktree for the SPEC: `sf worktree create SPEC-ID` (idempotent — safe to re-run).
+2. All remaining steps run inside `.worktrees/SPEC-ID/`. The worktree is already checked out to `feature/SPEC-ID`; no branch switching needed in the main checkout.
+3. Read the SPEC.
+4. Write the listed tests.
+5. Run `bash .specforge/scripts/sf-test.sh`.
+6. Confirm the tests fail for the expected reason.
+7. Set `**State:** tests-red`.
+8. Commit: `git commit -m "SPEC-ID: red tests"`.
+9. Stop.
 
 Review:
 
@@ -104,7 +105,7 @@ Command:
 /sf-ship SPEC-ID
 ```
 
-Process:
+Process (all steps run inside `.worktrees/SPEC-ID/`):
 
 1. Implement the minimum code to make the approved tests pass.
 2. Run `bash .specforge/scripts/sf-test.sh`.
@@ -167,17 +168,11 @@ requirement is done:
 
 ## Parallel Work
 
-Ask the agent for a wave plan (the procedure lives in the sf-plan skill,
-§ Wave planning). It reads each ready SPEC's declared `## Tests` and
-`## Implementation` file lists: specs with disjoint file sets are safe to
-implement in parallel; overlapping specs are serialized, and a dependency
-counts as satisfied only when it is done and merged. Waves are advisory —
-merge gates and tests still catch a wrong grouping.
+Every SPEC already lives in its own worktree, so parallel work is the default: open one session per SPEC and run the normal `/sf-test` → `/sf-review` → `/sf-ship` loop concurrently. The main checkout stays on your working branch throughout — agent sessions never touch it.
 
-Parallel execution: open one session per worktree (`sf worktree create SPEC-ID`)
-and run the normal `/sf-test` → `/sf-review` → `/sf-ship` loop in each. All
-gates still apply — each spec stops at `tests-red` for review and requires
-explicit `/sf-ship` and `/sf-finalize`.
+For specs that share files, ask the agent for a wave plan (the procedure lives in the sf-plan skill, § Wave planning). It reads each ready SPEC's declared `## Tests` and `## Implementation` file lists: specs with disjoint file sets are safe to implement in parallel; overlapping specs are serialized, and a dependency counts as satisfied only when it is done and merged. Waves are advisory — merge gates and tests still catch a wrong grouping.
+
+All gates still apply — each spec stops at `tests-red` for review and requires explicit `/sf-ship` and `/sf-finalize`.
 
 Finalizing a wave: the second branch in a wave cannot fast-forward after the
 first merges. Use `--rebase`:
@@ -206,7 +201,7 @@ Rules:
 1. Specs are the contract; implementation without a SPEC is rejected.
 2. Tests come before implementation. A spec with no expected failing test is not ready to build.
 3. Human approval is required before every phase transition; stop when a phase reaches its gate.
-4. Use one spec, one branch, and one merge.
+4. Use one spec, one worktree, one branch, and one merge. The main checkout is never touched during spec work.
 5. Builders run `bash .specforge/scripts/sf-test.sh`; do not hardcode project test commands.
 6. Tracking lives in `.specforge/specs/SPEC-*.md` checkboxes and stable `REQ-*` IDs; update only the current phase's fields.
 7. Approved active iterations are protected; new requirements are queued in `.specforge/NEXT.md` until the current specs are done.

@@ -144,7 +144,7 @@ tests that the gates catch — so this is your reasoning, not a script's.
    Group ready specs whose declared file lists are pairwise disjoint into one
    wave; serialize specs that share files.
 4. For each wave member: `sf worktree create SPEC-ID`, then run
-   `/sf-test SPEC-ID` in that checkout.
+   `/sf-test SPEC-ID` in that worktree (`.worktrees/SPEC-ID/`).
 5. To finalize a finished wave, run `/sf-finalize SPEC-ID` per spec in
    DESIGN-table order — each finalize is individually gated by the scripts.
 

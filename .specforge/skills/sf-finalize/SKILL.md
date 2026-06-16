@@ -30,7 +30,7 @@ Report that no merge was performed.
 
 ## Rules
 
-- Do not finalize a spec with pending checkout changes.
+- Do not finalize a spec with pending changes in the worktree.
 - Do not bypass `sf-verify-build.sh`.
 - Do not use non-fast-forward merge.
 - Do not merge multiple specs in one invocation.

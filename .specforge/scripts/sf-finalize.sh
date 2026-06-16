@@ -24,8 +24,8 @@ CURRENT_BRANCH="$(sf_current_branch "$ROOT")"
 BASE_BRANCH="$(sf_base_branch "$ROOT" "$BRANCH" 2>/dev/null || true)"
 PARALLEL_CHECKOUT="$(sf_worktree_for_branch "$ROOT" "$BRANCH" 2>/dev/null || true)"
 
-# Rebase a branch living in a parallel checkout onto the base branch, rerun
-# tests there, then ff-merge into the base branch and clean up the checkout.
+# Rebase a branch living in a worktree onto the base branch, rerun
+# tests there, then ff-merge into the base branch and clean up the worktree.
 rebase_and_merge_parallel() {
   local root="$1"
   local branch="$2"
@@ -42,7 +42,7 @@ rebase_and_merge_parallel() {
   git rebase --continue
 Then re-run: sf finalize $spec --rebase"
     fi
-    echo "Rebase successful. Rerunning tests in the parallel checkout..."
+    echo "Rebase successful. Rerunning tests in the worktree..."
     ( cd "$wt" && bash .specforge/scripts/sf-test.sh )
   fi
 
@@ -51,14 +51,14 @@ Then re-run: sf finalize $spec --rebase"
   git -C "$root" merge --ff-only "$branch" >/dev/null
   git -C "$root" worktree remove --force "$wt"
   git -C "$root" branch -d "$branch" >/dev/null
-  echo "Rebased and merged $branch into $base; removed the parallel checkout."
+  echo "Rebased and merged $branch into $base; removed the worktree."
 }
 
 sf_branch_exists "$ROOT" "$BRANCH" || sf_die "branch missing: $BRANCH"
 [ -n "$BASE_BRANCH" ] || sf_die "could not find base branch. Set SPECFORGE_BASE_BRANCH or create main/master/trunk/develop."
 
 if [ -n "$PARALLEL_CHECKOUT" ] && [ "$PARALLEL_CHECKOUT" != "$ROOT" ]; then
-  echo "Finalizing $SPEC from optional parallel checkout"
+  echo "Finalizing $SPEC from worktree"
   echo "1/2 Verifying completed branch..."
   ( cd "$ROOT" && bash .specforge/scripts/sf-verify-build.sh "$SPEC" )
 
@@ -70,21 +70,21 @@ if [ -n "$PARALLEL_CHECKOUT" ] && [ "$PARALLEL_CHECKOUT" != "$ROOT" ]; then
   fi
 
   if [ "$MODE" = "--rebase" ]; then
-    echo "2/2 Rebasing onto $BASE_BRANCH and merging optional parallel checkout..."
+    echo "2/2 Rebasing onto $BASE_BRANCH and merging worktree..."
     rebase_and_merge_parallel "$ROOT" "$BRANCH" "$BASE_BRANCH" "$SPEC" "$PARALLEL_CHECKOUT"
     echo ""
     ( cd "$ROOT" && bash .specforge/scripts/sf-facts.sh )
     exit 0
   fi
 
-  echo "2/2 Merging and cleaning up optional parallel checkout..."
+  echo "2/2 Merging and cleaning up worktree..."
   ( cd "$ROOT" && bash .specforge/scripts/sf-worktree.sh merge "$SPEC" )
   echo ""
   ( cd "$ROOT" && bash .specforge/scripts/sf-facts.sh )
   exit 0
 fi
 
-[ "$CURRENT_BRANCH" = "$BRANCH" ] || sf_die "current branch must be $BRANCH. Run: git switch $BRANCH"
+[ "$CURRENT_BRANCH" = "$BRANCH" ] || sf_die "no worktree found for $SPEC and current branch is not $BRANCH. Create a worktree: sf worktree create $SPEC"
 
 if ! git -C "$ROOT" diff --quiet || ! git -C "$ROOT" diff --cached --quiet; then
   sf_die "checkout has pending changes; commit or discard them before finalizing"

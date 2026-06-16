@@ -126,7 +126,7 @@ This is the only place in the workflow where specs move from `draft` to
 `approved`. A fresh session — and wave planning — trusts these fields, so do
 not emit your `[RESULT]` until they are written.
 
-After approval, the human runs `/sf-test SPEC-ID` for each spec, in dependency order, to create red tests for review. After inspecting them with `/sf-review SPEC-ID` and approving those tests, they run `/sf-ship SPEC-ID` to implement. Each SPEC is a separate branch-and-merge cycle. Sequential is the default; parallel is the human's call with optional parallel checkouts.
+After approval, the human runs `/sf-test SPEC-ID` for each spec, in dependency order, to create red tests for review. After inspecting them with `/sf-review SPEC-ID` and approving those tests, they run `/sf-ship SPEC-ID` to implement. Each SPEC gets its own worktree and feature branch — specs can run concurrently without touching the main checkout.
 
 ## End of session
 

@@ -26,23 +26,24 @@ Never load: `ALIGN.md`, other specs, `.specforge/iterations/`.
 ## Inputs
 
 - A SPEC-ID (for example, `SPEC-009`).
-- The current checkout. Normal SpecForge work happens on branch `feature/SPEC-{ID}`.
+- Every SPEC has a dedicated worktree at `.worktrees/SPEC-{ID}`. All your work happens inside that worktree — the main checkout is never touched.
 
 `SPEC-ID` resolves either `.specforge/specs/SPEC-ID.md` or a slugged file such as `.specforge/specs/SPEC-009-frequency-record.md`. Branches use the stable ID: `feature/SPEC-009` for `SPEC-009-frequency-record.md`.
 
-If you are not on `feature/SPEC-{ID}`, switch to it or create it:
+Ensure the worktree exists before doing anything else. `create` is idempotent — safe to run even if the worktree already exists:
 
 ```bash
-git switch feature/SPEC-{ID}
-# or, if the branch does not exist:
-git switch -c feature/SPEC-{ID}
+bash .specforge/scripts/sf-worktree.sh create SPEC-{ID}
 ```
 
-Before switching branches, stop if the current checkout has unrelated pending changes. Parallel checkouts are optional only; use `sf-worktree.sh` only when the human explicitly wants parallel SPEC work.
+**All subsequent commands in this session run inside the worktree: `.worktrees/SPEC-{ID}/`.**
+The worktree is already checked out to `feature/SPEC-{ID}`; no branch switching needed.
 
 ## Process (strict order — do not skip steps)
 
-1. **Verify the SPEC exists.** Ensure the current branch is `feature/SPEC-{ID}`, creating or switching to it if needed.
+1. **Verify the SPEC exists and ensure the worktree is ready.**
+   Run `bash .specforge/scripts/sf-worktree.sh create SPEC-{ID}` to create (or confirm) the worktree.
+   From this point, every command runs inside `.worktrees/SPEC-{ID}/`.
 2. **Read the resolved SPEC** at `.specforge/specs/SPEC-{ID}.md` or `.specforge/specs/SPEC-{ID}-<slug>.md`. Read it twice. If anything is ambiguous, ask the human, don't guess.
 3. **Check `State` and choose exactly one path.**
    - `draft`: STOP. The design bundle was never approved (the Designer sets

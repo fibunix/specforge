@@ -171,13 +171,20 @@ start the next iteration alignment with NEXT.md as the brief.
 
 ## Parallel builds (waves)
 
-When an iteration has multiple independent specs, ask the agent for a wave
-plan (procedure: sf-plan skill, § Wave planning). Specs with disjoint declared
-file lists can build concurrently. For each wave member:
+Every spec runs in its own worktree — the main checkout is never touched during
+spec work. This means all specs are naturally parallel: open one session per
+spec and run the normal loop concurrently.
+
+For specs that share files, ask the agent for a wave plan first (procedure:
+sf-plan skill, § Wave planning). Specs with disjoint declared file lists are
+safe to implement concurrently; overlapping specs must be serialized.
+
+Each `/sf-test SPEC-ID` automatically creates a worktree at
+`.worktrees/SPEC-ID` the first time it runs. You can also create one
+explicitly:
 
 ```bash
-sf worktree create SPEC-002   # isolated checkout in .worktrees/SPEC-002
-# open a session in .worktrees/SPEC-002 and run /sf-test SPEC-002
+sf worktree create SPEC-002   # creates .worktrees/SPEC-002 on feature/SPEC-002
 ```
 
 After all specs are done and reviewed, run `/sf-finalize SPEC-ID` per spec in

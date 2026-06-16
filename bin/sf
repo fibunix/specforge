@@ -13,8 +13,8 @@
 #   sf finalize SPEC-ID --rebase         Rebase onto base branch then ff-merge
 #   sf iteration abandon                 Abandon the active iteration and archive it
 #   sf queue "requirement text"          Append a bullet to NEXT.md (creates it if absent)
-#   sf worktree create SPEC-ID           Optional: create a parallel checkout
-#   sf worktree merge SPEC-ID            Optional: merge a parallel checkout
+#   sf worktree create SPEC-ID           Create an isolated worktree for a spec
+#   sf worktree merge SPEC-ID            Merge a spec worktree into the base branch
 #   sf lint                              Validate SPEC quality
 #   sf help                              Show this help
 #
@@ -67,9 +67,9 @@ Usage:
   sf finalize SPEC-ID --rebase         Rebase onto base branch, rerun tests, then ff-merge
   sf iteration abandon                 Abandon the active iteration and archive it
   sf queue "requirement text"          Append a bullet to NEXT.md (creates it if absent)
-  sf worktree create SPEC-ID           Optional: create a parallel checkout
-  sf worktree merge SPEC-ID            Optional: merge a parallel checkout
-  sf worktree merge SPEC-ID --dry-run  Check whether a parallel checkout can fast-forward
+  sf worktree create SPEC-ID           Create an isolated worktree for a spec
+  sf worktree merge SPEC-ID            Merge a spec worktree into the base branch
+  sf worktree merge SPEC-ID --dry-run  Check whether a worktree can fast-forward merge
   sf lint                              Validate SPEC quality
   sf help                              Show this help
 
