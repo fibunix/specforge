@@ -108,6 +108,7 @@ fi
 GITIGNORE="$ROOT/.gitignore"
 touch "$GITIGNORE"
 grep -qxF ".specforge/ALIGN.md.tmp" "$GITIGNORE" || echo ".specforge/ALIGN.md.tmp" >> "$GITIGNORE"
+grep -qxF ".worktrees/" "$GITIGNORE" || echo ".worktrees/" >> "$GITIGNORE"
 
 # ── 4. Make scripts executable ──
 chmod +x "$SF/scripts/"*.sh 2>/dev/null || true
