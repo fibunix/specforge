@@ -20,4 +20,8 @@ approval of the committed red tests — no separate approval step exists.
 3. Follow the builder manual through implementation, verification, and the
    final commit. Stop for final human review. Do not finalize.
 
-Tell the human to run `/sf-review SPEC-ID` before `/sf-finalize SPEC-ID`.
+**Handoff:**
+- Called from `/sf-loop`: the auto-review gate runs automatically after this
+  phase — do not tell the human to review.
+- Called directly by the human: tell the human to run `/sf-review SPEC-ID`
+  before `/sf-finalize SPEC-ID`.

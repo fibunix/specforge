@@ -52,6 +52,11 @@ Apply the first rung that matches; that is the `Next:` line.
    archive this iteration and start the next (NEXT.md is the queued brief if
    present).
 
+**Loop mode**: When `/loop /sf-loop` is active, the auto-review critic
+sub-agent handles `tests-red` and `done` gate transitions automatically —
+the loop stops only when the critic finds real issues. `/sf-review SPEC-ID`
+remains available at any time for manual inspection.
+
 ## Rules
 
 - Read-only: no edits, no branch switching, no finalization.

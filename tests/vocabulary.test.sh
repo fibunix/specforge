@@ -79,6 +79,28 @@ do
   grep -q "$phrase" "$plan_skill" || fail "sf-plan skill lost wave phrase: $phrase"
 done
 
+# ── Auto-review gate contract ─────────────────────────────────────────────────
+# sf-loop's auto-review gate and sf-auto-review's VERDICT format are the
+# machine-readable contracts between the loop and the critic sub-agent.
+# If these phrases change, the loop can no longer parse the critic's output.
+loop_skill="$ROOT/.specforge/skills/sf-loop/SKILL.md"
+for phrase in \
+  '## Auto-review gate' \
+  'VERDICT: PASS' \
+  'VERDICT: FAIL'
+do
+  grep -q "$phrase" "$loop_skill" || fail "sf-loop skill lost auto-review phrase: $phrase"
+done
+
+auto_review_skill="$ROOT/.specforge/skills/sf-auto-review/SKILL.md"
+for phrase in \
+  'VERDICT: PASS' \
+  'VERDICT: FAIL' \
+  'assume something is wrong and prove it'
+do
+  grep -q "$phrase" "$auto_review_skill" || fail "sf-auto-review skill lost critic phrase: $phrase"
+done
+
 if [ "$failures" -gt 0 ]; then
   echo "$failures vocabulary assertion(s) failed." >&2
   exit 1
