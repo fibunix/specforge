@@ -322,3 +322,21 @@ sf_spec_effective_state() {
   local tmpdir="$3"
   sf_spec_state "$(sf_spec_effective_file "$root" "$spec" "$tmpdir")"
 }
+
+sf_task_files() {
+  local root="$1"
+  local dir="$root/.specforge/tasks"
+  [ -d "$dir" ] || return 0
+  find "$dir" -maxdepth 1 -type f -name 'TASK-*.md' | sort
+}
+
+sf_task_id_from_name() {
+  local task="$1"
+  task="${task##*/}"
+  task="${task%.md}"
+  if [[ "$task" =~ ^(TASK-[0-9]+)-.+$ ]]; then
+    echo "${BASH_REMATCH[1]}"
+  else
+    echo "$task"
+  fi
+}

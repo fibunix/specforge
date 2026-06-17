@@ -70,3 +70,24 @@ for f in "${files[@]}"; do
   printf '%-22s state=%-10s source=%-9s branch=%-8s ac=%s tests=%s impl=%s\n' \
     "$id" "$state" "$source_kind" "$branch_status" "$ac" "$tests" "$impl"
 done
+
+task_files=()
+while IFS= read -r f; do
+  task_files+=("$f")
+done < <(sf_task_files "$ROOT")
+
+if [ "${#task_files[@]}" -gt 0 ]; then
+  echo ""
+  for f in "${task_files[@]}"; do
+    id="$(sf_task_id_from_name "$f")"
+    state="$(sf_spec_field "$f" "State" 2>/dev/null || true)"
+    [ -n "$state" ] || state="-"
+    branch="feature/$id"
+    if sf_branch_exists "$ROOT" "$branch"; then
+      branch_status="exists"
+    else
+      branch_status="missing"
+    fi
+    printf '%-18s state=%-8s branch=%s\n' "$id" "$state" "$branch_status"
+  done
+fi

@@ -15,6 +15,7 @@
 #   sf queue "requirement text"          Append a bullet to NEXT.md (creates it if absent)
 #   sf worktree create SPEC-ID           Create an isolated worktree for a spec
 #   sf worktree merge SPEC-ID            Merge a spec worktree into the base branch
+#   sf task list                         List all tasks and their state
 #   sf lint                              Validate SPEC quality
 #   sf help                              Show this help
 #
@@ -70,6 +71,7 @@ Usage:
   sf worktree create SPEC-ID           Create an isolated worktree for a spec
   sf worktree merge SPEC-ID            Merge a spec worktree into the base branch
   sf worktree merge SPEC-ID --dry-run  Check whether a worktree can fast-forward merge
+  sf task list                         List all tasks and their state
   sf lint                              Validate SPEC quality
   sf help                              Show this help
 
@@ -223,6 +225,27 @@ case "$COMMAND" in
   worktree)
     require_sf
     bash "$SF/scripts/sf-worktree.sh" "$@"
+    ;;
+
+  # ── task ──
+  task)
+    require_sf
+    SUBCOMMAND="${1:-}"
+    shift || true
+    case "$SUBCOMMAND" in
+      list)
+        bash "$SF/scripts/sf-task.sh" list
+        ;;
+      "")
+        echo "Usage: sf task list" >&2
+        exit 1
+        ;;
+      *)
+        echo "Unknown task subcommand: $SUBCOMMAND" >&2
+        echo "Usage: sf task list" >&2
+        exit 1
+        ;;
+    esac
     ;;
 
   # ── removed commands ──

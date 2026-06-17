@@ -17,15 +17,16 @@ derive what it means and what to do next.
    bash .specforge/scripts/sf-facts.sh
    ```
    It prints ALIGN/DESIGN status, the active Iteration ID, the NEXT.md queue
-   state, and one line per SPEC — state, source, branch, and checkbox counts.
-   State is read from the most-advanced copy of each spec (worktree, feature
-   branch, or checkout), so it is truthful even when work is in flight on a
-   branch.
+   state, one line per SPEC — state, source, branch, and checkbox counts — and
+   one line per TASK if any exist. State is read from the most-advanced copy of
+   each spec (worktree, feature branch, or checkout), so it is truthful even
+   when work is in flight on a branch.
 2. Read `.specforge/DESIGN.md`'s SPECS table yourself for build order and the
    Depends-on column. (Skip if DESIGN.md is missing.)
 3. Present a status table in DESIGN-table order (facts order for specs the
    table missed), then a `Next:` recommendation derived from the decision
-   ladder below.
+   ladder below. If tasks appear in the facts output, list open ones after the
+   SPEC table.
 4. When the human asks about requirement traceability ("where is REQ-X
    implemented? what supersedes it?"), grep `.specforge/specs/` and
    `.specforge/iterations/*/specs/` for the `REQ-*` ID and answer from the
@@ -64,3 +65,6 @@ remains available at any time for manual inspection.
 - `implemented` is a legacy state: a ship session stopped mid-handoff. Say so
   and recommend ticking the SPEC checkboxes, setting `State: done`, and
   committing.
+- Tasks are orthogonal to specs and the decision ladder. An open task does not
+  block spec work; it runs on its own branch and merges independently via
+  `/sf-task`.

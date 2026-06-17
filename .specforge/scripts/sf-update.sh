@@ -101,6 +101,26 @@ copy_spec_template() {
   echo "  ✓ updated .specforge/specs/TEMPLATE.md"
 }
 
+copy_task_template() {
+  local src="$SRC_SF/tasks/TEMPLATE.md"
+  local dst="$SF/tasks/TEMPLATE.md"
+
+  [ -f "$src" ] || return 0
+  if [ "$SAME_SOURCE" = true ]; then
+    echo "  ✓ .specforge/tasks/TEMPLATE.md already using source"
+    return 0
+  fi
+  if [ "$DRY_RUN" = true ]; then
+    echo "  → would update .specforge/tasks/TEMPLATE.md"
+    return 0
+  fi
+
+  mkdir -p "$SF/tasks"
+  cp "$src" "$dst"
+  [ -f "$SF/tasks/.gitkeep" ] || touch "$SF/tasks/.gitkeep"
+  echo "  ✓ updated .specforge/tasks/TEMPLATE.md"
+}
+
 run_adapters() {
   local ide_list ide adapter
   ide_list="$(sf_adapter_list_from_arg_or_install "$ROOT" "$IDE_ARG")"
@@ -129,6 +149,7 @@ for rel in scripts agents skills docs templates adapters root; do
   copy_path "$rel"
 done
 copy_spec_template
+copy_task_template
 
 chmod +x "$SF/scripts/"*.sh 2>/dev/null || true
 chmod +x "$SF/adapters/"*/adapt.sh 2>/dev/null || true

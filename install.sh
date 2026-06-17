@@ -191,6 +191,7 @@ install_framework() {
   rm -f "$SF_DIR/config.yaml" 2>/dev/null || true
   rm -rf "$SF_DIR/iterations" 2>/dev/null || true
   rm -rf "$SF_DIR/specs/SPEC-"*.md 2>/dev/null || true
+  rm -f "$SF_DIR/tasks/TASK-"*.md 2>/dev/null || true
 
   # Ensure specs/ has .gitkeep and TEMPLATE.md
   mkdir -p "$SF_DIR/specs"
@@ -199,6 +200,16 @@ install_framework() {
   fi
   if [ ! -f "$SF_DIR/specs/TEMPLATE.md" ]; then
     error "TEMPLATE.md missing from source — this shouldn't happen"
+    exit 1
+  fi
+
+  # Ensure tasks/ has .gitkeep and TEMPLATE.md
+  mkdir -p "$SF_DIR/tasks"
+  if [ ! -f "$SF_DIR/tasks/.gitkeep" ]; then
+    touch "$SF_DIR/tasks/.gitkeep"
+  fi
+  if [ ! -f "$SF_DIR/tasks/TEMPLATE.md" ]; then
+    error "tasks/TEMPLATE.md missing from source — this shouldn't happen"
     exit 1
   fi
 

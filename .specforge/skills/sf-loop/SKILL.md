@@ -25,6 +25,12 @@ critic findings. Pair with Claude Code's `/loop` feature:
    When multiple specs are at the same stage, prefer the one with the highest
    iteration number (most recent).
 
+   If no spec can advance, check for open tasks:
+   - Run `sf task list` and look for any `state=open` task.
+   - If found, invoke `/sf-task TASK-ID` for the first open task. The executor
+     runs to completion (classify → change → test → merge) with no gates.
+   - If multiple open tasks exist, handle one per loop iteration.
+
 3. After each auto-review **PASS**, immediately continue to the next phase
    (no stop, no human prompt):
    - auto-review `tests-red` PASS → **sf-ship** → auto-review gate at `done`
@@ -33,8 +39,9 @@ critic findings. Pair with Claude Code's `/loop` feature:
    One invocation can carry a spec from `approved` all the way to finalized
    if both auto-reviews pass.
 
-4. If no spec can move forward — every spec is finalized, still `draft`, or
-   blocked on a failed auto-review — **stop the loop** and print:
+4. If no spec can move forward AND no open tasks remain — every spec is
+   finalized, still `draft`, or blocked on a failed auto-review — **stop the
+   loop** and print:
 
    ```
    PIPELINE BLOCKED — waiting on human:

@@ -156,6 +156,26 @@ next command. For traceability questions ("where is REQ-X implemented? what
 supersedes it?"), the agent greps `.specforge/specs/` and
 `.specforge/iterations/*/specs/` and answers from the spec files directly.
 
+## Task
+
+Tasks are small, mechanical changes that don't need design, approval, or test scaffolding. Use a task when:
+
+- The change is purely mechanical — remove a field, rename a symbol, delete dead code, update a config value, fix a typo
+- No new behavior is introduced
+- The scope is clear from the request alone — no unknowns, no design decisions
+
+Command:
+
+```text
+/sf-task "remove the deprecated legacy_field from User model"
+```
+
+The executor classifies the request, creates `.specforge/tasks/TASK-NNN-<slug>.md`, makes the change in an isolated `feature/TASK-NNN` worktree, runs tests, and merges — no human approval required. It stops only on a genuine failure: tests it broke, or a scope that turns out larger than expected.
+
+If a request doesn't meet the task criteria (new behavior, design decisions needed, API changes), the executor stops and tells you to use `/sf-plan` instead.
+
+Tasks are orthogonal to specs: they run on their own branches and don't affect the spec decision ladder. `sf facts` and `sf status` show open tasks alongside specs.
+
 ## Requirement Changes
 
 Implemented requirements are immutable history. If behavior changes after a
