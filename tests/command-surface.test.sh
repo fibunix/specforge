@@ -26,9 +26,10 @@ assert_not_contains() {
   fi
 }
 
-canonical_commands=(sf-plan sf-test sf-ship sf-review sf-finalize sf-status)
+canonical_commands=(sf-plan sf-test sf-ship sf-review sf-finalize sf-status sf-loop sf-goal sf-task)
+internal_skills=(sf-auto-review sf-plan-reviewer sf-test-reviewer sf-implementation-reviewer sf-task-reviewer)
 legacy_commands=(sf-align sf-design sf-build sf-trace sf-next)
-primary_docs=(README.md AGENTS.md .specforge/root/AGENTS.md .specforge/docs/FLOW.md)
+primary_docs=(README.md AGENTS.md .specforge/docs/FLOW.md)
 
 # opencode commands are now file-based; check that each canonical command file exists
 for command in "${canonical_commands[@]}"; do
@@ -43,8 +44,17 @@ for command in "${legacy_commands[@]}"; do
   fi
 done
 
+for skill in "${internal_skills[@]}"; do
+  if [ ! -f ".specforge/skills/$skill/SKILL.md" ]; then
+    fail ".specforge/skills/$skill/SKILL.md missing"
+  fi
+  if [ -f ".specforge/adapters/opencode/commands/$skill.md" ]; then
+    fail ".specforge/adapters/opencode/commands/$skill.md should not exist (internal)"
+  fi
+done
+
 for doc in "${primary_docs[@]}"; do
-  for command in /sf-plan /sf-test /sf-ship /sf-review /sf-finalize /sf-status; do
+  for command in /sf-plan /sf-test /sf-ship /sf-review /sf-finalize /sf-status /sf-loop /sf-goal /sf-task; do
     assert_contains "$doc" "$command"
   done
 
@@ -53,10 +63,12 @@ for doc in "${primary_docs[@]}"; do
   done
 done
 
-for doc in AGENTS.md .specforge/root/AGENTS.md; do
+for doc in AGENTS.md; do
   assert_contains "$doc" "<!-- BEGIN SPECFORGE MANAGED BLOCK v1 -->"
   assert_contains "$doc" "<!-- END SPECFORGE MANAGED BLOCK v1 -->"
 done
+assert_contains .specforge/root/AGENTS.md "canonical root instruction template"
+assert_contains .specforge/root/AGENTS.md ".specforge/root/SPECFORGE.md"
 
 assert_contains .specforge/skills/sf-plan/SKILL.md "ALIGN"
 assert_contains .specforge/skills/sf-plan/SKILL.md "DESIGN"
@@ -75,8 +87,14 @@ assert_contains .specforge/skills/sf-status/SKILL.md "requirement"
 assert_contains .specforge/skills/sf-status/SKILL.md "NEXT[.]md"
 assert_contains .specforge/skills/sf-status/SKILL.md "sf-facts"
 assert_contains .specforge/skills/sf-status/SKILL.md "Decision ladder"
+assert_contains .specforge/skills/sf-status/SKILL.md "PASS receipts"
 assert_not_contains .specforge/skills/sf-status/SKILL.md "sf-trace"
 assert_not_contains .specforge/skills/sf-status/SKILL.md "sf-snapshot"
+
+assert_contains .specforge/skills/sf-loop/SKILL.md "DESIGN"
+assert_contains .specforge/skills/sf-loop/SKILL.md "VERDICT: PASS"
+assert_contains .specforge/skills/sf-goal/SKILL.md "thin public wrapper"
+assert_contains .specforge/skills/sf-task/SKILL.md "independent reviewer"
 
 assert_contains .specforge/skills/sf-review/SKILL.md "merge-base"
 assert_contains .specforge/skills/sf-review/SKILL.md "declared"

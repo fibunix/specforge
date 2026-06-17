@@ -1,13 +1,13 @@
 ---
 name: sf-loop
-description: Advance the SpecForge pipeline, gating each commit with a critic sub-agent. Stops only at design gates (draft → approved) or when the critic finds real issues. Pair with /loop for continuous unattended advancement.
+description: Advance the SpecForge build loop autonomously after human-approved Plan artifacts, gating each transition with an independent reviewer receipt.
 ---
 
-# /sf-loop — advance the pipeline
+# /sf-loop — autonomous build loop
 
-Each invocation moves the most-advanced eligible spec forward through as many
-phases as the auto-review gate allows, stopping only at design gates or real
-critic findings. Pair with Claude Code's `/loop` feature:
+Each invocation moves eligible approved specs through the build loop as far as
+independent reviewer PASS receipts allow. Plan approval remains human-only.
+Pair with Claude Code's `/loop` feature:
 
 ```
 /loop /sf-loop
@@ -15,32 +15,36 @@ critic findings. Pair with Claude Code's `/loop` feature:
 
 ## Each iteration
 
-1. Run `sf facts` and read the current state of all specs.
+1. Run `sf facts`, then read `.specforge/DESIGN.md`'s SPECS table for build
+   order and Depends-on rules. Use the same dependency rule as `/sf-status`: a
+   dependency is satisfied only when it is `done` and merged into the base
+   branch. Never start a dependent spec just because its branch is done.
 
-2. Find the most-advanced spec that can advance, in this priority order:
-   - State `done` + feature branch still exists → **sf-finalize** (no gate needed)
-   - State `tests-red` + tests committed on branch → **auto-review gate** at `tests-red`
-   - State `approved` → **sf-test**, then **auto-review gate** at `tests-red`
-
-   When multiple specs are at the same stage, prefer the one with the highest
-   iteration number (most recent).
+2. Find the first eligible spec in DESIGN-table order, with this stage priority:
+   - State `done` + feature branch still exists → **implementation-review gate**
+     at `done`, then **sf-finalize --autonomous**
+   - State `tests-red` + tests committed on branch → **test-review gate** at
+     `tests-red`, then **sf-ship**
+   - State `approved` with dependencies satisfied → **sf-test**, then
+     **test-review gate** at `tests-red`
 
    If no spec can advance, check for open tasks:
    - Run `sf task list` and look for any `state=open` task.
    - If found, invoke `/sf-task TASK-ID` for the first open task. The executor
-     runs to completion (classify → change → test → merge) with no gates.
+     commits task work, the independent task reviewer gates it, and only then
+     the coordinator merges it.
    - If multiple open tasks exist, handle one per loop iteration.
 
-3. After each auto-review **PASS**, immediately continue to the next phase
+3. After each independent reviewer **PASS**, immediately continue to the next phase
    (no stop, no human prompt):
-   - auto-review `tests-red` PASS → **sf-ship** → auto-review gate at `done`
-   - auto-review `done` PASS → **sf-finalize**
+   - test-review `tests-red` PASS → **sf-ship** → implementation-review gate at `done`
+   - implementation-review `done` PASS → **sf-finalize --autonomous**
 
    One invocation can carry a spec from `approved` all the way to finalized
-   if both auto-reviews pass.
+   if both independent reviewers pass and write receipts.
 
 4. If no spec can move forward AND no open tasks remain — every spec is
-   finalized, still `draft`, or blocked on a failed auto-review — **stop the
+   finalized, still `draft`, or blocked on a failed reviewer — **stop the
    loop** and print:
 
    ```
@@ -51,22 +55,31 @@ critic findings. Pair with Claude Code's `/loop` feature:
 To invoke a phase, read `.specforge/skills/sf-{phase}/SKILL.md` and follow its
 instructions for `<SPEC-ID>`.
 
-## Auto-review gate
+## Reviewer Gates
 
-After sf-test commits tests and after sf-ship commits implementation, spawn a
-critic sub-agent before proceeding:
+After sf-test commits tests and after sf-ship commits implementation, spawn an
+independent reviewer sub-agent before proceeding:
 
-1. Use the Agent tool to launch a sub-agent with the instructions in
-   `.specforge/skills/sf-auto-review/SKILL.md`. Pass it the SPEC-ID and the
-   current phase (`tests-red` or `done`). The sub-agent runs in a fresh context,
-   reading the diff without accumulated session state.
+1. For `tests-red`, launch a fresh sub-agent using
+   `.specforge/skills/sf-test-reviewer/SKILL.md`.
+2. For `done`, launch a fresh sub-agent using
+   `.specforge/skills/sf-implementation-reviewer/SKILL.md`.
+3. For tasks, launch a fresh sub-agent using
+   `.specforge/skills/sf-task-reviewer/SKILL.md`.
 
-2. Read the sub-agent's response for the `VERDICT:` line:
-   - `VERDICT: PASS` → log: `Auto-review passed SPEC-NNN [phase] — continuing`
-     and proceed to the next phase immediately.
-   - `VERDICT: FAIL` → stop the loop and print:
+Each reviewer must write a receipt under
+`.specforge/reviews/<SPEC-ID>/<phase>-<commit>.md` with `spec_id`, `phase`,
+`base`, `head`, `reviewer`, `verdict`, commands run, concise findings, and an
+exact final line `VERDICT: PASS` or `VERDICT: FAIL`.
+
+Read only the receipt and the final `VERDICT:` line:
+- `VERDICT: PASS` → log: `Review passed SPEC-NNN [phase] — continuing` and
+  proceed immediately.
+- Anything else — reviewer cannot run, cannot write a receipt, receipt `head`
+  does not match the current commit, or the exact line `VERDICT: PASS` is
+  missing — fail closed. Stop the loop and print:
      ```
-     PIPELINE BLOCKED — auto-review failed:
+     PIPELINE BLOCKED — independent review failed:
      SPEC-NNN [phase]: <FINDINGS from sub-agent>
      Fix the issues and re-run /sf-loop, or run /sf-review SPEC-NNN for details.
      ```
@@ -78,3 +91,4 @@ critic sub-agent before proceeding:
 - If ALIGN.md or DESIGN.md is missing, stop and report — do not generate them.
 - Run `sf lint` before advancing any spec. Fix lint errors first.
 - Worktrees are the default: never switch the main checkout's branch.
+- `/sf-goal` uses this exact workflow; do not maintain a second autonomous path.

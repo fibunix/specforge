@@ -53,6 +53,7 @@ write_done_spec() {
 # SPEC-001
 
 **Status:** approved
+**State:** done
 **Iteration:** ITER-active
 **Build state:** done
 **Branch:** feature/SPEC-001

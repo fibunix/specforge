@@ -23,6 +23,7 @@ esac
 BRANCH="$(sf_branch_for_spec "$SPEC")"
 SPEC_ID="${BRANCH#feature/}"
 WT="$(sf_default_worktree_for_spec "$ROOT" "$SPEC")"
+BASE_BRANCH="$(sf_base_branch "$ROOT" "$BRANCH" 2>/dev/null || true)"
 
 create_worktree() {
   cd "$ROOT"
@@ -32,8 +33,10 @@ create_worktree() {
   fi
 
   mkdir -p "$ROOT/.worktrees"
-  touch "$ROOT/.gitignore"
-  grep -qxF ".worktrees/" "$ROOT/.gitignore" || echo ".worktrees/" >> "$ROOT/.gitignore"
+  if [ -d "$ROOT/.git/info" ]; then
+    touch "$ROOT/.git/info/exclude"
+    grep -qxF ".worktrees/" "$ROOT/.git/info/exclude" || echo ".worktrees/" >> "$ROOT/.git/info/exclude"
+  fi
 
   git show-ref --verify --quiet "refs/heads/$BRANCH" || git branch "$BRANCH"
   git worktree add "$WT" "$BRANCH"
@@ -59,21 +62,29 @@ ensure_clean_or_commit() {
 
 merge_worktree() {
   [ -d "$WT" ] || sf_die "no worktree at $WT"
+  [ -n "$BASE_BRANCH" ] || sf_die "could not find base branch. Set SPECFORGE_BASE_BRANCH or create main/master/trunk/develop."
 
   cd "$WT"
   ensure_clean_or_commit
 
   cd "$ROOT"
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    sf_die "base checkout has pending changes; commit or discard them before merging"
+  fi
+  if [ "$(sf_current_branch "$ROOT")" != "$BASE_BRANCH" ]; then
+    git switch "$BASE_BRANCH" >/dev/null
+  fi
+
   if [ "$MODE" = "--dry-run" ]; then
-    git merge-base --is-ancestor HEAD "$BRANCH" || sf_die "dry run failed: $BRANCH cannot fast-forward into $(sf_current_branch "$ROOT")"
-    echo "dry run passed: $BRANCH can fast-forward into $(sf_current_branch "$ROOT")"
+    git merge-base --is-ancestor "$BASE_BRANCH" "$BRANCH" || sf_die "dry run failed: $BRANCH cannot fast-forward into $BASE_BRANCH"
+    echo "dry run passed: $BRANCH can fast-forward into $BASE_BRANCH"
     return 0
   fi
 
-  git merge --ff-only "$BRANCH" >/dev/null 2>&1 || sf_die "fast-forward merge failed; resolve manually in $WT"
+  git merge --ff-only "$BRANCH" >/dev/null 2>&1 || sf_die "fast-forward merge into $BASE_BRANCH failed; resolve manually in $WT"
   git worktree remove --force "$WT"
   git branch -d "$BRANCH" 2>/dev/null || git branch -D "$BRANCH"
-  echo "merged $BRANCH into $(sf_current_branch "$ROOT") and cleaned up the worktree"
+  echo "merged $BRANCH into $BASE_BRANCH and cleaned up the worktree"
 }
 
 case "$ACTION" in

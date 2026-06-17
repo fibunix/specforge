@@ -1,0 +1,6 @@
+name = "sf_test_reviewer"
+description = "SpecForge test reviewer: independently validates tests-red branches."
+sandbox_mode = "workspace-write"
+developer_instructions = """
+Read `.specforge/skills/sf-test-reviewer/SKILL.md` before doing any work and follow it exactly. Do not edit implementation or tests. Write only the required receipt under `.specforge/reviews/` and end with the exact VERDICT block.
+"""

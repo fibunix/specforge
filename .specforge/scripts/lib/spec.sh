@@ -192,6 +192,33 @@ sf_spec_count_unchecked() {
   ' "$file"
 }
 
+sf_spec_checklist_paths() {
+  local file="$1"
+  local mode="${2:-all}"
+  awk -v mode="$mode" '
+    /^## Tests$/ { section=1; next }
+    /^## Implementation$/ { section=1; next }
+    /^## / { section=0; next }
+    section && /^- \[[ x]\]/ {
+      checked = ($0 ~ /^- \[x\]/)
+      if (mode == "checked" && !checked) next
+      line=$0
+      sub(/^- \[[ x]\][[:space:]]*/, "", line)
+      split(line, parts, " ")
+      if (parts[1] != "") print parts[1]
+    }
+  ' "$file"
+}
+
+sf_spec_path_is_normalized_relative() {
+  local path="$1"
+  [ -n "$path" ] || return 1
+  case "$path" in
+    /*|../*|*/../*|*"/.."|".."|".") return 1 ;;
+  esac
+  return 0
+}
+
 sf_spec_display_file() {
   local root="$1"
   local spec="$2"

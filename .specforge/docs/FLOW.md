@@ -1,18 +1,27 @@
-# Plan -> Test -> Ship
+# Plan -> Build Loop -> Archive
 
-SpecForge has three human-facing phases and three approval gates.
+SpecForge has a human-approved Plan phase, a per-SPEC build loop, and an
+archive step for completed iterations.
 
 ```text
-Plan -> Test -> Ship
+Plan -> Build Loop -> Archive
 ```
 
-Approvals:
+Manual approvals:
 
 ```text
 Approve specs -> Approve red tests -> Approve final diff
 ```
 
-No command advances through an approval gate automatically.
+Autonomous build-loop approvals:
+
+```text
+Approve specs -> independent tests-red PASS -> independent done PASS
+```
+
+Plan approval is always human-only. After Plan approval, `/sf-loop` and
+`/sf-goal` may continue through merge only when independent reviewer receipts
+contain exact `VERDICT: PASS`.
 
 Iterations repeat this loop. The active `.specforge/ALIGN.md`,
 `.specforge/DESIGN.md`, and `.specforge/specs/SPEC-*.md` describe only the
@@ -65,7 +74,33 @@ If a requirement changes after it was implemented, do not edit the old
 requirement. Create a new `REQ-*` ID in the next iteration and mark the old ID
 as superseded in the SPEC.
 
-## Test
+## Build Loop
+
+The normal manual loop remains:
+
+```text
+/sf-test SPEC-ID
+/sf-review SPEC-ID
+/sf-ship SPEC-ID
+/sf-review SPEC-ID
+/sf-finalize SPEC-ID
+```
+
+The explicit autonomous loop is:
+
+```text
+/sf-loop
+/sf-goal
+```
+
+`/sf-goal` is only a thin wrapper around `/sf-loop`; it reuses the same
+selection, reviewer receipts, and finalization rules.
+
+The coordinator stays lean. It reads `sf facts`, the DESIGN SPECS dependency
+table, reviewer receipts, and `[RESULT]` blocks. Builders and validators read
+the detailed artifacts.
+
+### Test
 
 Goal: write failing tests for one approved SPEC, commit them, then stop.
 
@@ -93,9 +128,15 @@ Review:
 /sf-review SPEC-ID
 ```
 
-Gate: the human approves the red tests before implementation. Running `/sf-ship SPEC-ID` is the approval signal.
+Manual gate: the human approves the red tests before implementation. Running
+`/sf-ship SPEC-ID` is the approval signal.
 
-## Ship
+Autonomous gate: an independent test reviewer validates coverage, real
+assertions, scope, and expected red failure, then writes
+`.specforge/reviews/<SPEC-ID>/tests-red-<commit>.md`. Missing receipt, stale
+head, or any verdict other than exact `VERDICT: PASS` stops the loop.
+
+### Ship
 
 Goal: implement only after test approval, verify, then stop for final review.
 
@@ -120,9 +161,15 @@ Review:
 /sf-review SPEC-ID
 ```
 
-Gate: the human approves the final diff before finalization. Running `/sf-finalize SPEC-ID` is the approval signal.
+Manual gate: the human approves the final diff before finalization. Running
+`/sf-finalize SPEC-ID` is the approval signal.
 
-Finalize:
+Autonomous gate: an independent implementation reviewer validates final diff,
+scope, requirements, green tests, and undeclared files, then writes
+`.specforge/reviews/<SPEC-ID>/done-<commit>.md`. Missing receipt, stale head,
+or any verdict other than exact `VERDICT: PASS` stops the loop.
+
+### Finalize
 
 ```text
 /sf-finalize SPEC-ID
@@ -132,6 +179,14 @@ Finalize:
 the feature branch. Use `/sf-finalize SPEC-ID --dry-run` to check without
 changing state.
 
+Autonomous finalize uses:
+
+```bash
+sf finalize SPEC-ID --autonomous
+```
+
+The script requires matching PASS receipts before merge.
+
 The base branch is auto-detected as `main`, `master`, `trunk`, or `develop`. If
 your project uses a different branch, set `SPECFORGE_BASE_BRANCH` before
 running finalize:
@@ -140,6 +195,8 @@ running finalize:
 export SPECFORGE_BASE_BRANCH=release
 sf finalize SPEC-ID
 ```
+
+## Status
 
 Status and traceability:
 
@@ -156,6 +213,9 @@ next command. For traceability questions ("where is REQ-X implemented? what
 supersedes it?"), the agent greps `.specforge/specs/` and
 `.specforge/iterations/*/specs/` and answers from the spec files directly.
 
+`/sf-loop` uses the same DESIGN-table order and dependency rule as
+`/sf-status`: a dependency is satisfied only when it is `done` and merged.
+
 ## Task
 
 Tasks are small, mechanical changes that don't need design, approval, or test scaffolding. Use a task when:
@@ -170,7 +230,12 @@ Command:
 /sf-task "remove the deprecated legacy_field from User model"
 ```
 
-The executor classifies the request, creates `.specforge/tasks/TASK-NNN-<slug>.md`, makes the change in an isolated `feature/TASK-NNN` worktree, runs tests, and merges — no human approval required. It stops only on a genuine failure: tests it broke, or a scope that turns out larger than expected.
+The executor classifies the request, creates `.specforge/tasks/TASK-NNN-<slug>.md`,
+makes the change in an isolated `feature/TASK-NNN` worktree, runs tests, and
+commits. An independent task reviewer then validates the mechanical diff and
+writes `.specforge/reviews/<TASK-ID>/task-<commit>.md`. Only a current exact
+`VERDICT: PASS` lets the coordinator merge. No human approval is required, but
+tasks do not self-validate.
 
 If a request doesn't meet the task criteria (new behavior, design decisions needed, API changes), the executor stops and tells you to use `/sf-plan` instead.
 
@@ -192,7 +257,9 @@ Every SPEC already lives in its own worktree, so parallel work is the default: o
 
 For specs that share files, ask the agent for a wave plan (the procedure lives in the sf-plan skill, § Wave planning). It reads each ready SPEC's declared `## Tests` and `## Implementation` file lists: specs with disjoint file sets are safe to implement in parallel; overlapping specs are serialized, and a dependency counts as satisfied only when it is done and merged. Waves are advisory — merge gates and tests still catch a wrong grouping.
 
-All gates still apply — each spec stops at `tests-red` for review and requires explicit `/sf-ship` and `/sf-finalize`.
+Manual gates still apply — each spec stops at `tests-red` for review and
+requires explicit `/sf-ship` and `/sf-finalize`. Autonomous `/sf-loop` can
+advance those gates only with independent PASS receipts.
 
 Finalizing a wave: the second branch in a wave cannot fast-forward after the
 first merges. Use `--rebase`:
@@ -201,8 +268,8 @@ first merges. Use `--rebase`:
 sf finalize SPEC-ID --rebase
 ```
 
-`--rebase` rebases the feature branch onto the moved base, reruns
-`sf-test.sh`, then ff-merges. Because wave specs are file-disjoint, rebases
+`--rebase` rebases the feature branch onto the moved base, reruns full
+`sf-verify-build.sh`, then ff-merges. Because wave specs are file-disjoint, rebases
 are conflict-free in practice; a conflict aborts with instructions.
 
 ## [RESULT] Protocol
@@ -220,7 +287,8 @@ Rules:
 
 1. Specs are the contract; implementation without a SPEC is rejected.
 2. Tests come before implementation. A spec with no expected failing test is not ready to build.
-3. Human approval is required before every phase transition; stop when a phase reaches its gate.
+3. Human approval is required for Plan and manual phase transitions. Autonomous
+   transitions require independent reviewer receipts with exact `VERDICT: PASS`.
 4. Use one spec, one worktree, one branch, and one merge. The main checkout is never touched during spec work.
 5. Builders run `bash .specforge/scripts/sf-test.sh`; do not hardcode project test commands.
 6. Tracking lives in `.specforge/specs/SPEC-*.md` checkboxes and stable `REQ-*` IDs; update only the current phase's fields.
@@ -243,8 +311,9 @@ iteration specs to inspect implemented or superseded history.
 
 - Write implementation before red tests.
 - Skip human approval of Plan artifacts.
-- Skip human approval of red tests.
-- Skip final diff review before finalization.
+- Skip human approval of red tests in manual mode.
+- Skip final diff review before finalization in manual mode.
+- Merge autonomously without matching PASS receipts.
 - Hardcode test commands; always use `sf-test.sh`.
 - Mix new requirements into an approved active iteration with unfinished specs.
 - Reuse or rewrite implemented requirement IDs for changed behavior.

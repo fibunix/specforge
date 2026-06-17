@@ -1,5 +1,5 @@
 ---
-description: Advance the SpecForge pipeline one step, stopping at any human approval gate
+description: Autonomously advance approved SpecForge specs after independent reviewer PASS receipts
 agent: sf
 ---
 

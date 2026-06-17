@@ -7,7 +7,7 @@ Spec-driven, TDD-first development. One shared understanding, one source of trut
 
 - Read `.specforge/config.yaml`. If phase state is unclear, run `/sf-status`.
 - Use one phase per fresh agent session and stop at the next approval gate.
-- For detailed phase behavior, follow `.specforge/skills/<command>/SKILL.md`.
+- Follow `.specforge/skills/<command>/SKILL.md` for phase behavior. Flow reference and rules: `.specforge/docs/FLOW.md`.
 
 ## Commands
 
@@ -17,6 +17,9 @@ Spec-driven, TDD-first development. One shared understanding, one source of trut
 /sf-review SPEC-ID    # inspect tests or implementation changes
 /sf-ship SPEC-ID      # implement after red tests are approved
 /sf-finalize SPEC-ID  # verify, merge, and delete the feature branch
+/sf-loop              # autonomous build loop after reviewer PASS receipts
+/sf-goal              # goal-style wrapper around /sf-loop
+/sf-task "..."        # mechanical task with independent review
 /sf-status            # read disk, queued NEXT.md, status, and requirement trace
 ```
 
@@ -29,13 +32,15 @@ Spec-driven, TDD-first development. One shared understanding, one source of trut
 - `/sf-test SPEC-ID` means Plan artifacts were approved.
 - `/sf-ship SPEC-ID` means red tests were approved.
 - `/sf-finalize SPEC-ID` means the final diff was approved.
-- Never move through a gate unless the human explicitly requests the next command.
+- `/sf-loop` and `/sf-goal` may replace red-test and final-diff human approval
+  only with independent reviewer receipts that contain exact `VERDICT: PASS`.
+- Never move through a manual gate unless the human explicitly requests the next command.
 
 ## Rules
 
 1. Specs are the contract; implementation without a SPEC is rejected.
 2. Tests come before implementation. A spec with no expected failing test is not ready to build.
-3. Human approval is required before every phase transition; stop when a phase reaches its gate.
+3. Human approval is required for Plan and manual phase transitions; autonomous build-loop transitions require independent reviewer receipts with exact `VERDICT: PASS`.
 4. Use one spec, one branch, and one merge.
 5. Builders run `bash .specforge/scripts/sf-test.sh`; do not hardcode project test commands.
 6. Tracking lives in `.specforge/specs/SPEC-*.md` checkboxes and stable `REQ-*` IDs; update only the current phase's fields.

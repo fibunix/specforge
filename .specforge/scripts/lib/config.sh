@@ -90,7 +90,17 @@ sf_config_project_dir() {
   local path="$2"
   [ -n "$path" ] || path="."
   case "$path" in
-    /*) echo "$path" ;;
+    /*)
+      sf_fail "config project path must be relative and stay inside the worktree: $path"
+      return 1
+      ;;
+    */../*|../*|*/..|..|.)
+      if [ "$path" != "." ]; then
+        sf_fail "config project path must not contain '..': $path"
+        return 1
+      fi
+      echo "$root"
+      ;;
     *) echo "$root/$path" ;;
   esac
 }

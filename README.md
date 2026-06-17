@@ -3,12 +3,13 @@
 SpecForge is a small, spec-driven workflow for AI-assisted development.
 
 ```text
-Plan -> Test -> Ship
+Plan -> Build Loop -> Archive
 ```
 
 - Plan creates `ALIGN.md`, `DESIGN.md`, and approved SPEC files.
-- Test writes failing tests first, then commits them for review.
-- Ship implements only after the red tests are approved.
+- The build loop writes red tests, ships implementation, and finalizes each SPEC.
+- Manual mode uses human approval at `/sf-ship` and `/sf-finalize`.
+- Autonomous mode uses independent reviewer PASS receipts through `/sf-loop` or `/sf-goal`.
 - New requirements wait in `NEXT.md` while active specs are unfinished.
 
 SpecForge works with any stack. Your project commands live in
@@ -66,6 +67,9 @@ Run these in your AI coding tool:
 /sf-review SPEC-ID    review tests or implementation
 /sf-ship SPEC-ID      implement after tests are approved
 /sf-finalize SPEC-ID  verify, merge, and clean up
+/sf-loop              autonomously advance approved specs after reviewer PASS
+/sf-goal              goal-style wrapper around /sf-loop
+/sf-task "..."        execute a mechanical task with independent review
 /sf-status            show current state, queued next work, and requirement trace
 ```
 
@@ -83,6 +87,18 @@ Normal flow:
 /sf-review SPEC-ID
 /sf-finalize SPEC-ID
 ```
+
+Autonomous flow after Plan approval:
+
+```text
+/sf-loop
+/sf-goal
+```
+
+`/sf-loop` and `/sf-goal` may continue through merge only after independent
+reviewers write current PASS receipts in `.specforge/reviews/`. If a reviewer
+cannot run, cannot write the receipt, or omits exact `VERDICT: PASS`, the loop
+stops for human action. Plan approval is never automated.
 
 `SPEC-ID` resolves `.specforge/specs/SPEC-ID.md` or `.specforge/specs/SPEC-ID-<slug>.md`.
 Branches use the stable ID: `feature/SPEC-009` for `SPEC-009-frequency-record.md`.
@@ -102,13 +118,17 @@ If a session is already long when Plan routes to alignment or design, end it and
 
 `/sf-test SPEC-ID` creates or switches to `feature/SPEC-ID`, writes failing tests for every unchecked item in the SPEC's `## Tests` section, confirms they are red, sets `State: tests-red`, and **commits the red tests**. It stops there.
 
-Inspect the committed tests with `/sf-review SPEC-ID`. Approve them by running `/sf-ship SPEC-ID`.
+Inspect the committed tests with `/sf-review SPEC-ID`. In manual mode, approve
+them by running `/sf-ship SPEC-ID`. In autonomous mode, `/sf-loop` requires an
+independent `tests-red` PASS receipt before shipping.
 
 ### Ship
 
 `/sf-ship SPEC-ID` implements the minimum code to make the committed red tests pass, ticks the SPEC checkboxes, commits on `feature/SPEC-ID`, and runs the verifier. It stops for final review.
 
-Inspect the diff with `/sf-review SPEC-ID`. Finalize with `/sf-finalize SPEC-ID`.
+Inspect the diff with `/sf-review SPEC-ID`. In manual mode, finalize with
+`/sf-finalize SPEC-ID`. In autonomous mode, `/sf-loop` requires an independent
+`done` PASS receipt before running finalize with `--autonomous`.
 
 ### Parallel work
 
@@ -139,21 +159,22 @@ sf status        # alias: sf facts — dumps plan + per-SPEC facts
 sf test
 sf lint
 sf verify SPEC-ID
-sf finalize SPEC-ID [--dry-run] [--rebase]
+sf finalize SPEC-ID [--dry-run] [--rebase] [--autonomous]
 sf queue "requirement text"
 sf worktree create|merge SPEC-ID
 sf iteration abandon
 ```
 
 Scripts enforce, agents interpret: status reasoning, wave planning, review
-judgment, and requirement traceability live in the skills (`/sf-status`,
-`/sf-plan`, `/sf-review`), not in the CLI.
+judgment, autonomous reviewer gating, and requirement traceability live in the
+skills (`/sf-status`, `/sf-plan`, `/sf-review`, `/sf-loop`), not in the CLI.
 
 ## Rules
 
 1. Specs are the contract.
 2. Tests come before implementation.
-3. Humans approve every phase transition.
+3. Humans approve Plan and every manual phase transition; autonomous build-loop
+   transitions require independent reviewer PASS receipts.
 4. Use one spec, one branch, and one merge.
 5. Builders run `.specforge/scripts/sf-test.sh`.
 6. Approved active iterations are protected; future requirements wait in `NEXT.md`.

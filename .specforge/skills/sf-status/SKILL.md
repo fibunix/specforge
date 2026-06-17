@@ -39,10 +39,12 @@ Apply the first rung that matches; that is the `Next:` line.
 1. If the plan artifacts are not ready — ALIGN.md or DESIGN.md missing or not
    `approved`, or no SPEC files exist — recommend `/sf-plan`.
 2. If any spec is `tests-red`, recommend `/sf-review SPEC-ID` then
-   `/sf-ship SPEC-ID` (red tests await human approval).
+   `/sf-ship SPEC-ID` (manual mode: red tests await human approval; autonomous
+   mode: `/sf-loop` uses an independent PASS receipt).
 3. If any spec is `done` and its feature branch still exists, recommend
-   `/sf-review SPEC-ID` then `/sf-finalize SPEC-ID` (implementation awaits
-   final review).
+   `/sf-review SPEC-ID` then `/sf-finalize SPEC-ID` (manual mode: implementation
+   awaits final review; autonomous mode: `/sf-loop` requires an independent
+   PASS receipt and runs finalize with `--autonomous`).
 4. For the first `approved` spec (in DESIGN-table order) whose dependencies
    are all satisfied, recommend `/sf-test SPEC-ID`. A dependency is satisfied
    only when it is `done` **and merged** — done on an unmerged feature branch
@@ -53,9 +55,10 @@ Apply the first rung that matches; that is the `Next:` line.
    archive this iteration and start the next (NEXT.md is the queued brief if
    present).
 
-**Loop mode**: When `/loop /sf-loop` is active, the auto-review critic
-sub-agent handles `tests-red` and `done` gate transitions automatically —
-the loop stops only when the critic finds real issues. `/sf-review SPEC-ID`
+**Loop/goal mode**: When `/sf-loop` or `/sf-goal` is active, independent
+reviewer sub-agents handle `tests-red`, `done`, and task transitions by writing
+PASS receipts in `.specforge/reviews/`. Missing receipts, stale heads, or any
+verdict other than exact `VERDICT: PASS` stop the loop. `/sf-review SPEC-ID`
 remains available at any time for manual inspection.
 
 ## Rules

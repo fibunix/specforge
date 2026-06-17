@@ -11,6 +11,7 @@
 #   sf verify SPEC-ID                    Verify a build branch before review/merge
 #   sf finalize SPEC-ID [--dry-run]      Verify, merge, and clean up a completed spec
 #   sf finalize SPEC-ID --rebase         Rebase onto base branch then ff-merge
+#   sf finalize SPEC-ID --autonomous     Require reviewer PASS receipts before merge
 #   sf iteration abandon                 Abandon the active iteration and archive it
 #   sf queue "requirement text"          Append a bullet to NEXT.md (creates it if absent)
 #   sf worktree create SPEC-ID           Create an isolated worktree for a spec
@@ -65,7 +66,8 @@ Usage:
   sf verify SPEC-ID                    Verify a build branch before review/merge
   sf finalize SPEC-ID                  Verify, merge, and clean up a completed spec
   sf finalize SPEC-ID --dry-run        Verify and check merge without changing state
-  sf finalize SPEC-ID --rebase         Rebase onto base branch, rerun tests, then ff-merge
+  sf finalize SPEC-ID --rebase         Rebase onto base branch, rerun verify, then ff-merge
+  sf finalize SPEC-ID --autonomous     Require reviewer PASS receipts before merge
   sf iteration abandon                 Abandon the active iteration and archive it
   sf queue "requirement text"          Append a bullet to NEXT.md (creates it if absent)
   sf worktree create SPEC-ID           Create an isolated worktree for a spec
@@ -87,10 +89,13 @@ Use the slash commands in your editor for the full workflow:
   /sf-review ID   Inspect committed tests or implementation changes
   /sf-ship ID     Implement after test approval
   /sf-finalize ID Verify, merge, and clean up after review
+  /sf-loop        Autonomously advance approved specs after reviewer PASS
+  /sf-goal        Goal-style wrapper around /sf-loop
+  /sf-task "..."  Execute a mechanical task with independent review
   /sf-status      Facts from 'sf status' plus the agent's next-action reasoning
 
 Wave planning, review judgment, and requirement traceability are agent-side:
-run /sf-plan, /sf-review, or ask the agent — scripts enforce, agents interpret.
+run /sf-plan, /sf-review, /sf-loop, or ask the agent — scripts enforce, agents interpret.
 HELP
 }
 

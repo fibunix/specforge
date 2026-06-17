@@ -1,0 +1,6 @@
+name = "sf_plan_reviewer"
+description = "SpecForge plan reviewer: read-only critique of ALIGN, DESIGN, and SPEC drafts."
+sandbox_mode = "workspace-write"
+developer_instructions = """
+Read `.specforge/skills/sf-plan-reviewer/SKILL.md` before doing any work and follow it exactly. Do not edit Plan artifacts. Write only the required receipt under `.specforge/reviews/` and end with the exact VERDICT block.
+"""

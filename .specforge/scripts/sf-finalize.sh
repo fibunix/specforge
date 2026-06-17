@@ -12,17 +12,55 @@ source "$SCRIPT_DIR/lib/git.sh"
 ROOT="$(sf_root)"
 SPEC="${1:-}"
 MODE="${2:-}"
+AUTONOMOUS=false
 
-[ -n "$SPEC" ] || sf_usage "sf-finalize.sh SPEC-ID [--dry-run|--rebase]"
-case "$MODE" in
-  ""|--dry-run|--rebase) ;;
-  *) sf_usage "sf-finalize.sh SPEC-ID [--dry-run|--rebase]" ;;
-esac
+[ -n "$SPEC" ] || sf_usage "sf-finalize.sh SPEC-ID [--dry-run|--rebase|--autonomous]"
+shift || true
+MODE=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run|--rebase)
+      [ -z "$MODE" ] || sf_usage "sf-finalize.sh SPEC-ID [--dry-run|--rebase|--autonomous]"
+      MODE="$1"
+      shift
+      ;;
+    --autonomous)
+      AUTONOMOUS=true
+      shift
+      ;;
+    *)
+      sf_usage "sf-finalize.sh SPEC-ID [--dry-run|--rebase|--autonomous]"
+      ;;
+  esac
+done
 
 BRANCH="$(sf_branch_for_spec "$SPEC")"
+SPEC_ID="${BRANCH#feature/}"
 CURRENT_BRANCH="$(sf_current_branch "$ROOT")"
 BASE_BRANCH="$(sf_base_branch "$ROOT" "$BRANCH" 2>/dev/null || true)"
 PARALLEL_CHECKOUT="$(sf_worktree_for_branch "$ROOT" "$BRANCH" 2>/dev/null || true)"
+
+require_autonomous_receipts() {
+  local spec_id="$1"
+  local branch="$2"
+  local head tests_receipt done_receipt receipt_dir
+
+  [ "$AUTONOMOUS" = true ] || return 0
+  head="$(git -C "$ROOT" rev-parse "$branch")"
+  receipt_dir="$ROOT/.specforge/reviews/$spec_id"
+  done_receipt="$receipt_dir/done-$head.md"
+  [ -f "$done_receipt" ] || sf_die "autonomous finalize requires PASS receipt: .specforge/reviews/$spec_id/done-$head.md"
+  grep -q '^phase:[[:space:]]*done[[:space:]]*$' "$done_receipt" || sf_die "autonomous receipt has wrong phase: $done_receipt"
+  grep -q '^head:[[:space:]]*'"$head"'[[:space:]]*$' "$done_receipt" || sf_die "autonomous receipt head does not match $branch: $done_receipt"
+  grep -q '^verdict:[[:space:]]*PASS[[:space:]]*$' "$done_receipt" || sf_die "autonomous receipt must have verdict: PASS: $done_receipt"
+  grep -q '^VERDICT:[[:space:]]*PASS[[:space:]]*$' "$done_receipt" || sf_die "autonomous receipt must contain exact VERDICT: PASS: $done_receipt"
+
+  tests_receipt="$(find "$receipt_dir" -maxdepth 1 -type f -name 'tests-red-*.md' 2>/dev/null | head -n 1 || true)"
+  [ -n "$tests_receipt" ] || sf_die "autonomous finalize requires a tests-red PASS receipt in .specforge/reviews/$spec_id/"
+  grep -q '^phase:[[:space:]]*tests-red[[:space:]]*$' "$tests_receipt" || sf_die "autonomous tests receipt has wrong phase: $tests_receipt"
+  grep -q '^verdict:[[:space:]]*PASS[[:space:]]*$' "$tests_receipt" || sf_die "autonomous tests receipt must have verdict: PASS: $tests_receipt"
+  grep -q '^VERDICT:[[:space:]]*PASS[[:space:]]*$' "$tests_receipt" || sf_die "autonomous tests receipt must contain exact VERDICT: PASS: $tests_receipt"
+}
 
 # Rebase a branch living in a worktree onto the base branch, rerun
 # tests there, then ff-merge into the base branch and clean up the worktree.
@@ -43,8 +81,11 @@ rebase_and_merge_parallel() {
 Then re-run: sf finalize $spec --rebase"
     fi
     echo "Rebase successful. Rerunning tests in the worktree..."
-    ( cd "$wt" && bash .specforge/scripts/sf-test.sh )
   fi
+
+  echo "Rebase successful. Rerunning full verification..."
+  ( cd "$root" && bash .specforge/scripts/sf-verify-build.sh "$spec" )
+  require_autonomous_receipts "$SPEC_ID" "$branch"
 
   git -C "$root" merge-base --is-ancestor "$base" "$branch" || sf_die "$branch still cannot fast-forward into $base after rebase"
   [ "$(sf_current_branch "$root")" = "$base" ] || git -C "$root" switch "$base" >/dev/null
@@ -61,6 +102,9 @@ if [ -n "$PARALLEL_CHECKOUT" ] && [ "$PARALLEL_CHECKOUT" != "$ROOT" ]; then
   echo "Finalizing $SPEC from worktree"
   echo "1/2 Verifying completed branch..."
   ( cd "$ROOT" && bash .specforge/scripts/sf-verify-build.sh "$SPEC" )
+  if [ "$MODE" != "--rebase" ]; then
+    require_autonomous_receipts "$SPEC_ID" "$BRANCH"
+  fi
 
   if [ "$MODE" = "--dry-run" ]; then
     echo "2/2 Checking fast-forward merge..."
@@ -93,6 +137,9 @@ fi
 echo "Finalizing $SPEC"
 echo "1/2 Verifying completed branch..."
 ( cd "$ROOT" && bash .specforge/scripts/sf-verify-build.sh "$SPEC" )
+if [ "$MODE" != "--rebase" ]; then
+  require_autonomous_receipts "$SPEC_ID" "$BRANCH"
+fi
 
 if [ "$MODE" = "--rebase" ]; then
   echo "2/2 Rebasing $BRANCH onto $BASE_BRANCH..."
@@ -108,8 +155,10 @@ if [ "$MODE" = "--rebase" ]; then
 Then re-run: sf finalize $SPEC"
     fi
     echo "Rebase successful. Rerunning tests..."
-    ( cd "$ROOT" && bash .specforge/scripts/sf-test.sh )
   fi
+  echo "Rerunning full verification..."
+  ( cd "$ROOT" && bash .specforge/scripts/sf-verify-build.sh "$SPEC" )
+  require_autonomous_receipts "$SPEC_ID" "$BRANCH"
   # After rebase (or if already up to date), ff-merge
   git -C "$ROOT" merge-base --is-ancestor "$BASE_BRANCH" "$BRANCH" || sf_die "$BRANCH still cannot fast-forward into $BASE_BRANCH after rebase"
   git -C "$ROOT" switch "$BASE_BRANCH" >/dev/null

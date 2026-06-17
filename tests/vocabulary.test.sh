@@ -89,7 +89,11 @@ for phrase in \
   'VERDICT: PASS' \
   'VERDICT: FAIL'
 do
-  grep -q "$phrase" "$loop_skill" || fail "sf-loop skill lost auto-review phrase: $phrase"
+  if [ "$phrase" = "## Auto-review gate" ]; then
+    grep -q "## Reviewer Gates" "$loop_skill" || fail "sf-loop skill lost reviewer gate heading"
+  else
+    grep -q "$phrase" "$loop_skill" || fail "sf-loop skill lost auto-review phrase: $phrase"
+  fi
 done
 
 auto_review_skill="$ROOT/.specforge/skills/sf-auto-review/SKILL.md"

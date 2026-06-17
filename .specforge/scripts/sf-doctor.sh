@@ -123,19 +123,20 @@ check_scripts() {
 
 check_command_surface() {
   local skill_dir skill_name
+  local public_skill
   for skill_dir in "$SF"/skills/*/; do
     [ -d "$skill_dir" ] || continue
     skill_name="$(basename "$skill_dir")"
     require_file "$skill_dir/SKILL.md" "skill $skill_name"
-    # Only sf-* skills are slash commands; internal skills (grill-with-docs)
-    # are read by agents directly and have no command file.
+    public_skill=false
     case "$skill_name" in
-      sf-*)
-        if [ -d "$SF/adapters/opencode/commands" ]; then
-          require_file "$SF/adapters/opencode/commands/$skill_name.md" "opencode command $skill_name"
-        fi
+      sf-plan|sf-test|sf-ship|sf-review|sf-finalize|sf-status|sf-loop|sf-goal|sf-task)
+        public_skill=true
         ;;
     esac
+    if [ "$public_skill" = true ] && [ -d "$SF/adapters/opencode/commands" ]; then
+      require_file "$SF/adapters/opencode/commands/$skill_name.md" "opencode command $skill_name"
+    fi
   done
 }
 

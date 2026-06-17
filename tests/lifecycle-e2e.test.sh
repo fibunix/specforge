@@ -162,6 +162,11 @@ assert_contains "facts after finalize" 'SPEC-002 +state=approved' "$out"
 
 # ── Complete SPEC-002 directly (same flow, condensed) ─────────────────────────
 git_p switch -qc feature/SPEC-002
+echo 'exit 1' > "$PROJECT/tests/sandbox-t2.sh"
+write_spec 2 tests-red " "
+git_p add -A
+git_p commit -qm "SPEC-002: red tests"
+
 echo 'exit 0' > "$PROJECT/tests/sandbox-t2.sh"
 echo 'ok' > "$PROJECT/src/t2.sh"
 write_spec 2 done x

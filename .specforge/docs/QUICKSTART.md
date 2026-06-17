@@ -115,6 +115,16 @@ POST /auth/login accepts email + password and returns a JWT.
 The builder creates `feature/SPEC-001`, writes failing tests for every unchecked
 line in `## Tests`, confirms they are red, sets `State: tests-red`, and commits.
 
+Autonomous option after Plan approval:
+
+```text
+/sf-loop
+```
+
+`/sf-loop` can continue from red tests to implementation and finalize only when
+independent reviewers write current PASS receipts. `/sf-goal` is the same
+workflow with goal-style wording.
+
 ### 5. Review and approve the red tests
 
 ```text
@@ -189,6 +199,8 @@ sf worktree create SPEC-002   # creates .worktrees/SPEC-002 on feature/SPEC-002
 
 After all specs are done and reviewed, run `/sf-finalize SPEC-ID` per spec in
 dependency order (use `sf finalize SPEC-ID --rebase` once the base has moved).
+Autonomous `/sf-loop` uses the same DESIGN dependency order and waits until
+dependencies are done and merged.
 
 ---
 

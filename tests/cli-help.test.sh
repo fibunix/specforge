@@ -35,6 +35,7 @@ for command in \
   "sf test" \
   "sf verify" \
   "sf finalize" \
+  "sf task" \
   "sf worktree" \
   "sf help"
 do
@@ -49,7 +50,7 @@ assert_help_not_contains "sf trace"
 assert_help_not_contains "sf review"
 assert_help_not_contains "sf registry"
 
-for command in /sf-plan /sf-test /sf-ship /sf-review /sf-finalize /sf-status; do
+for command in /sf-plan /sf-test /sf-ship /sf-review /sf-finalize /sf-status /sf-loop /sf-goal /sf-task; do
   assert_help_contains "$command"
 done
 

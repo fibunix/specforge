@@ -137,6 +137,33 @@ assert_contains "facts SPEC-001 in flight" \
 (cd "$PROJECT" && bash .specforge/scripts/sf-worktree.sh create SPEC-002 >/dev/null)
 WT="$PROJECT/.worktrees/SPEC-002"
 mkdir -p "$WT/tests" "$WT/src"
+echo 'exit 1' > "$WT/tests/sandbox-t2.sh"
+cat > "$WT/.specforge/specs/SPEC-002-thing.md" <<'EOF'
+# SPEC-002: Thing 2
+
+**Traces to:** .specforge/ALIGN.md § "Problem" | .specforge/DESIGN.md § "SPECS produced"
+**State:** tests-red
+**Iteration:** ITER-001-facts
+
+## Description
+
+Thing 2.
+
+## Acceptance criteria
+
+- [ ] REQ-F02-001: does thing 2
+
+## Tests
+
+- [ ] tests/sandbox-t2.sh  (covers REQ-F02-001)
+
+## Implementation
+
+- [ ] src/t2.sh
+EOF
+git -C "$WT" -c user.name=sf-test -c user.email=sf@test add -A
+git -C "$WT" -c user.name=sf-test -c user.email=sf@test commit -qm "SPEC-002: red tests"
+
 echo 'exit 0' > "$WT/tests/sandbox-t2.sh"
 echo 'ok' > "$WT/src/t2.sh"
 cat > "$WT/.specforge/specs/SPEC-002-thing.md" <<'EOF'

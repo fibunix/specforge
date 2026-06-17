@@ -7,7 +7,7 @@
 #
 # What each adapter installs:
 #   opencode:     AGENTS.md symlink if absent, agents/, commands/, skills/ (file-based; no opencode.json)
-#   claude-code:  root CLAUDE.md symlink if absent, agents/, skills/
+#   claude-code:  root CLAUDE.md managed block, agents/, skills/
 #   codex:        Confirms AGENTS.md at root, agents/, config.toml if absent, instructions/
 #   pi:           Uses root AGENTS.md, prompts/, skills/, agents/, instructions/
 #   antigravity:  Confirms root AGENTS.md, instructions/
@@ -138,7 +138,7 @@ else
   echo "Which coding agent / IDE are you using?"
   echo ""
   echo "  1) opencode       — .opencode/ agents, commands, skills (file-based; no opencode.json)"
-  echo "  2) claude-code    — root CLAUDE.md if absent + agents/ + skills/"
+  echo "  2) claude-code    — root CLAUDE.md managed block + agents/ + skills/"
   echo "  3) codex          — AGENTS.md at root (native discovery) + .codex/agents + instructions/"
   echo "  4) pi             — root AGENTS.md + .pi prompts, skills, agents, and instructions/"
   echo "  5) antigravity    — AGENTS.md at root (native workspace context) + instructions/"
@@ -191,4 +191,5 @@ SpecForge initialized.
 Next steps:
   1. Edit .specforge/config.yaml (projects, test/lint/build commands, source dirs)
   2. Open the project in your editor and run /sf-plan
+  3. After Plan approval, continue manually or run /sf-loop or /sf-goal
 MSG

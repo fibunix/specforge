@@ -70,19 +70,85 @@ run_build_lint() {
   if [ -z "$ids" ]; then
     build_cmd="$(sf_config_top_value "$cfg" build_command 2>/dev/null || true)"
     lint_cmd="$(sf_config_top_value "$cfg" lint_command 2>/dev/null || true)"
-    [ -n "$build_cmd" ] && run_config_command build "$target" "$build_cmd" || true
-    [ -n "$lint_cmd" ]  && run_config_command lint  "$target" "$lint_cmd"  || true
+    [ -n "$build_cmd" ] && run_config_command build "$target" "$build_cmd"
+    [ -n "$lint_cmd" ]  && run_config_command lint  "$target" "$lint_cmd"
   else
     for project_id in $ids; do
       local path dir
       path="$(sf_config_project_value "$cfg" "$project_id" path 2>/dev/null || true)"
-      dir="$(sf_config_project_dir "$target" "$path")"
+      dir="$(sf_config_project_dir "$target" "$path")" || return 1
       build_cmd="$(sf_config_project_value "$cfg" "$project_id" build_command 2>/dev/null || true)"
       lint_cmd="$(sf_config_project_value  "$cfg" "$project_id" lint_command  2>/dev/null || true)"
-      [ -n "$build_cmd" ] && run_config_command "build/$project_id" "$dir" "$build_cmd" || true
-      [ -n "$lint_cmd" ]  && run_config_command "lint/$project_id"  "$dir" "$lint_cmd"  || true
+      [ -n "$build_cmd" ] && run_config_command "build/$project_id" "$dir" "$build_cmd"
+      [ -n "$lint_cmd" ]  && run_config_command "lint/$project_id"  "$dir" "$lint_cmd"
     done
   fi
+}
+
+verify_red_tests_commit() {
+  local target="$1"
+  local spec_file="$2"
+  local spec_rel base_branch base commit
+
+  spec_rel="${spec_file#$target/}"
+  base_branch="$(sf_base_branch "$ROOT" "$EXPECTED_BRANCH" 2>/dev/null || true)"
+  [ -n "$base_branch" ] || { fail_check "could not find base branch for history verification"; return 0; }
+  base="$(git -C "$target" merge-base "$base_branch" HEAD 2>/dev/null || true)"
+  [ -n "$base" ] || { fail_check "could not find merge-base with $base_branch"; return 0; }
+
+  while IFS= read -r commit; do
+    if git -C "$target" show "$commit:$spec_rel" 2>/dev/null | grep -q '^\*\*State:\*\*[[:space:]]*tests-red[[:space:]]*$'; then
+      return 0
+    fi
+  done < <(git -C "$target" log --format=%H "$base..HEAD" -- "$spec_rel")
+
+  fail_check "branch history must include a committed State: tests-red before done"
+}
+
+verify_declared_scope() {
+  local target="$1"
+  local spec_file="$2"
+  local spec_rel base_branch base changed declared_file changed_file declared_path
+  local declared_tmp changed_tmp
+
+  spec_rel="${spec_file#$target/}"
+  base_branch="$(sf_base_branch "$ROOT" "$EXPECTED_BRANCH" 2>/dev/null || true)"
+  [ -n "$base_branch" ] || { fail_check "could not find base branch for scope verification"; return 0; }
+  base="$(git -C "$target" merge-base "$base_branch" HEAD 2>/dev/null || true)"
+  [ -n "$base" ] || { fail_check "could not find merge-base with $base_branch"; return 0; }
+
+  declared_tmp="$(mktemp "${TMPDIR:-/tmp}/sf-declared.XXXXXX")"
+  changed_tmp="$(mktemp "${TMPDIR:-/tmp}/sf-changed.XXXXXX")"
+  trap 'rm -f "$declared_tmp" "$changed_tmp"' RETURN
+
+  sf_spec_checklist_paths "$spec_file" all | sort -u > "$declared_tmp"
+  git -C "$target" diff --name-only "$base..HEAD" | sort -u > "$changed_tmp"
+
+  while IFS= read -r declared_path; do
+    [ -n "$declared_path" ] || continue
+    sf_spec_path_is_normalized_relative "$declared_path" || fail_check "declared path must be normalized and relative: $declared_path"
+  done < "$declared_tmp"
+
+  while IFS= read -r changed_file; do
+    [ -n "$changed_file" ] || continue
+    sf_spec_path_is_normalized_relative "$changed_file" || fail_check "changed path must be normalized and relative: $changed_file"
+    case "$changed_file" in
+      "$spec_rel"|.specforge/specs/*|.specforge/LEARNINGS.md|.specforge/CONTEXT.md|docs/adr/*)
+        continue
+        ;;
+    esac
+    if ! grep -qxF "$changed_file" "$declared_tmp"; then
+      fail_check "changed file is not declared in SPEC Tests or Implementation: $changed_file"
+    fi
+  done < "$changed_tmp"
+
+  while IFS= read -r declared_file; do
+    [ -n "$declared_file" ] || continue
+    [ -f "$target/$declared_file" ] || fail_check "$SPEC: ticked checkbox references missing file: $declared_file"
+  done < <(sf_spec_checklist_paths "$spec_file" checked)
+
+  rm -f "$declared_tmp" "$changed_tmp"
+  trap - RETURN
 }
 
 if [ "$ERRORS" -eq 0 ]; then
@@ -90,24 +156,9 @@ if [ "$ERRORS" -eq 0 ]; then
   ( cd "$TARGET" && bash .specforge/scripts/sf-test.sh )
   run_build_lint "$ROOT/.specforge/config.yaml" "$TARGET"
 
-  # Scope review (undeclared changed files) is the review skill's judgment.
-  # This backstop only catches the error-shaped lie: a ticked checkbox whose
-  # file does not exist in TARGET.
   if [ -n "$SPEC_FILE" ]; then
-    while IFS= read -r fp; do
-      [ -n "$fp" ] || continue
-      [ -f "$TARGET/$fp" ] || sf_warn "$SPEC: ticked checkbox references missing file: $fp"
-    done < <(awk '
-      /^## Tests$/ { section=1; next }
-      /^## Implementation$/ { section=1; next }
-      /^## / { section=0; next }
-      section && /^- \[x\]/ {
-        line=$0
-        sub(/^- \[x\][[:space:]]*/, "", line)
-        split(line, parts, " ")
-        if (parts[1] != "") print parts[1]
-      }
-    ' "$SPEC_FILE")
+    verify_red_tests_commit "$TARGET" "$SPEC_FILE"
+    verify_declared_scope "$TARGET" "$SPEC_FILE"
   fi
 fi
 

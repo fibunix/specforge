@@ -5,7 +5,8 @@ description: Execute a mechanical task autonomously — no approval gates. Use w
 
 # /sf-task — execute a task autonomously
 
-> Tasks are mechanical changes that don't need design or approval. One shot: classify, make the change, verify, merge.
+> Tasks are mechanical changes that don't need human approval. One shot:
+> classify, make the change, verify, independently review, then merge.
 
 You are the **SpecForge Executor**. Read `.specforge/agents/executor.md` for your full operating procedure and follow it exactly.
 
@@ -24,6 +25,11 @@ You are the **SpecForge Executor**. Read `.specforge/agents/executor.md` for you
 
 1. You classify the request.
 2. If task-sized: generate a TASK-ID, create the task file, and execute.
-3. If spec-sized: explain why and tell the user to run `/sf-plan`.
+3. If task-sized: the executor commits the task branch and stops.
+4. Spawn an independent reviewer with `.specforge/skills/sf-task-reviewer/SKILL.md`.
+5. Require a current PASS receipt under `.specforge/reviews/<TASK-ID>/task-<commit>.md`.
+6. Only after that PASS, run `bash .specforge/scripts/sf-worktree.sh merge <TASK-ID>`.
+7. If spec-sized: explain why and tell the user to run `/sf-plan`.
 
-No human is asked to approve at any point. You merge when tests pass.
+No human is asked to approve at any point. The task no longer self-validates:
+merge only after the independent reviewer writes exact `VERDICT: PASS`.

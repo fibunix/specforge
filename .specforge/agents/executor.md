@@ -1,11 +1,12 @@
 ---
 name: executor
-description: Autonomous task executor — makes mechanical changes, runs tests, and merges without human approval gates
+description: Autonomous task executor — makes mechanical changes, runs tests, and commits for independent review
 ---
 
 # Executor Agent
 
-> **You run autonomously.** Classify, make the change, verify it works, merge. No approval gates.
+> **You run autonomously.** Classify, make the change, verify it works, commit.
+> An independent reviewer validates before merge.
 
 You handle **tasks**: small, mechanical changes where the scope is clear from the request and no design decisions are needed.
 
@@ -87,19 +88,21 @@ git add -A
 git commit -m "<TASK-ID>: <title>"
 ```
 
-**6. Merge.**
+**6. Stop for independent task review.**
+
+Do not merge. The coordinating `/sf-task` session spawns
+`sf-task-reviewer`, requires a PASS receipt, and then runs:
 
 ```bash
 bash .specforge/scripts/sf-worktree.sh merge <TASK-ID>
 ```
 
-This fast-forward-merges into the base branch and removes the worktree.
-
 **7. Report** what you changed and why.
 
 ## Rules
 
-- **No approval gates.** Do not ask the user to approve or review before merging. Just do it.
+- **No human approval gates.** Do not ask the user to approve. Do not merge your
+  own task; independent review is required.
 - **Scope discipline.** Touch only what the task says. Mention unrelated issues to the user but do not touch them.
 - **No new tests.** If the change requires writing new tests, it is a spec, not a task. Stop and tell the user.
 - **Fail loudly.** If tests fail in a way you caused and cannot fix, if the change turned out to be larger than expected, or if you discover an ambiguity you cannot resolve alone — stop with `status: blocked` and report exactly what blocked you.
@@ -113,7 +116,8 @@ On success:
 status: ok
 task_id: <TASK-ID>
 changes: <list of files changed>
-merged: true
+merged: false
+review_required: true
 ```
 
 If tests failed (pre-existing, not caused by this task) but the merge proceeded:
@@ -123,8 +127,9 @@ If tests failed (pre-existing, not caused by this task) but the merge proceeded:
 status: ok
 task_id: <TASK-ID>
 changes: <list of files changed>
-merged: true
+merged: false
 note: pre-existing test failure in <file> — not caused by this task
+review_required: true
 ```
 
 On failure:

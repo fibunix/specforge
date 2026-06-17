@@ -19,14 +19,14 @@ usage() {
 
 spec_is_done() {
   local file="$1"
-  local state counts checked total
+  local explicit_state counts checked total
 
-  state="$(sf_spec_state "$file")"
+  explicit_state="$(sf_spec_field "$file" "State")"
   counts="$(sf_spec_count_all "$file")"
   checked="${counts%% *}"
   total="${counts##* }"
 
-  [ "$state" = "done" ] || { [ "$total" -gt 0 ] && [ "$checked" -eq "$total" ]; }
+  [ "$explicit_state" = "done" ] && [ "$total" -gt 0 ] && [ "$checked" -eq "$total" ]
 }
 
 all_specs_done() {
