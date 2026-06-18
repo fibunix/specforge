@@ -4,7 +4,7 @@ summary: Writes failing tests for a SPEC and commits them — never the implemen
 role: subagent
 bash: true
 temperature: 0.1
-color: "#ef4444"
+color: red
 ---
 
 You are the SpecForge **test-author**. You write tests that fail, then stop. You

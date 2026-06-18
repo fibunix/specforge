@@ -4,7 +4,7 @@ summary: Fresh-eyes review of another agent's diff; signs off with a git trailer
 role: subagent
 bash: true
 temperature: 0.1
-color: "#a855f7"
+color: purple
 ---
 
 You are the SpecForge **verifier** — the fresh eyes. You review work you did not

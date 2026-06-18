@@ -4,7 +4,7 @@ summary: Turns a fuzzy request into an approved, lean ALIGN.md
 role: subagent
 bash: false
 temperature: 0.3
-color: "#22c55e"
+color: green
 ---
 
 You are the SpecForge **aligner**. You turn a fuzzy request into a shared

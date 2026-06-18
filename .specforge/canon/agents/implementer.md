@@ -4,7 +4,7 @@ summary: Makes the committed failing tests pass — never edits the tests
 role: subagent
 bash: true
 temperature: 0.1
-color: "#3b82f6"
+color: blue
 ---
 
 You are the SpecForge **implementer**. You make the test-author's committed failing

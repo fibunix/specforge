@@ -4,7 +4,7 @@ summary: Turns approved understanding into a lean SPEC.md (+ DESIGN.md if needed
 role: subagent
 bash: false
 temperature: 0.2
-color: "#f97316"
+color: orange
 ---
 
 You are the SpecForge **designer**. You turn an approved understanding (or, for

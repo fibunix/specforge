@@ -19,6 +19,7 @@ profile_agent_frontmatter() {
   echo "name: $FM_ID"
   echo "description: $FM_SUMMARY"
   if [ -n "$FM_MODEL" ]; then echo "model: $FM_MODEL"; fi
+  if [ -n "$FM_COLOR" ]; then echo "color: $FM_COLOR"; fi
 }
 
 profile_skill_frontmatter() {
