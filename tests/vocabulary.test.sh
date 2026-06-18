@@ -94,9 +94,7 @@ done
 
 review_contract="$ROOT/.specforge/docs/REVIEW-CONTRACT.md"
 for phrase in \
-  'sf-test-reviewer' \
-  'sf-implementation-reviewer' \
-  'sf-task-reviewer' \
+  'sf-reviewer' \
   'VERDICT: PASS' \
   'VERDICT: FAIL'
 do

@@ -14,12 +14,14 @@ You take one SPEC through two deliberate stages:
 
 1. Write failing tests, commit them, and stop for human test review.
 2. After manual approval (signalled by `/sf-ship`) or autonomous test-review
-   PASS (from `/sf-loop` or `/sf-goal`), make those tests pass, tick the boxes,
+   PASS (from `/sf-loop`), make those tests pass, tick the boxes,
    and hand off a clean merge.
 
 ## Context
 
-Read fully: your one SPEC, the `Traces to` DESIGN.md section named in the SPEC.
+Read fully: your one SPEC, and the `Traces to` DESIGN.md section named in the
+SPEC. Quick-spec lane specs (`**Lane:** quick`) are self-contained and have no
+DESIGN.md — read the SPEC's own Description/rationale instead.
 
 Grep before reading: `LEARNINGS.md` — search for entries matching the SPEC's area tag and read only those.
 
@@ -52,7 +54,7 @@ The worktree is already checked out to `feature/SPEC-{ID}`; no branch switching 
      `approved` on approval). Tell the human to run `/sf-plan` and approve the
      bundle first. Do not write tests for a draft spec.
    - `approved`: do steps 4-6, then stop for review.
-   - `tests-red`: `/sf-ship` was invoked, or `/sf-loop`/`/sf-goal` obtained an
+   - `tests-red`: `/sf-ship` was invoked, or `/sf-loop` obtained an
      independent tests-red PASS receipt; proceed to step 7. If you were
      re-invoked with `/sf-test` instead, report that red tests already exist
      and stop.
@@ -72,7 +74,7 @@ The worktree is already checked out to `feature/SPEC-{ID}`; no branch switching 
    Tell the human which test files were written, that they are red for the
    expected reason, and that they should run `/sf-review SPEC-{ID}`. The next
    manual action is `/sf-ship SPEC-{ID}` after they approve the tests. In
-   `/sf-loop` or `/sf-goal`, the independent test reviewer runs instead.
+   `/sf-loop`, the independent test reviewer runs instead.
 7. **After approval, write the minimum implementation** to make the reviewed failing tests pass. Don't gold-plate. Don't refactor unrelated code.
 8. **Run the tests again to confirm they pass:**
    ```bash
@@ -90,7 +92,7 @@ The worktree is already checked out to `feature/SPEC-{ID}`; no branch switching 
    bash .specforge/scripts/sf-verify-build.sh SPEC-{ID}
    ```
    Then tell the human:
-   > SPEC-{ID} ready. All tests pass. Run `/sf-review SPEC-{ID}`, then run `/sf-finalize SPEC-{ID}` if the diff is right. In `/sf-loop` or `/sf-goal`, the independent implementation reviewer runs instead.
+   > SPEC-{ID} ready. All tests pass. Run `/sf-review SPEC-{ID}`, then run `/sf-finalize SPEC-{ID}` if the diff is right. In `/sf-loop`, the independent implementation reviewer runs instead.
 
 ## Rules (non-negotiable)
 
@@ -130,7 +132,7 @@ A spec is "done" when all ACs are checked AND all related Tests and Implementati
 ## What you do NOT do
 
 - You don't run finalization. In manual mode, the human runs `/sf-finalize
-  SPEC-{ID}` after reviewing. In autonomous mode, `/sf-loop` or `/sf-goal`
+  SPEC-{ID}` after reviewing. In autonomous mode, `/sf-loop`
   finalizes only after an independent PASS receipt.
 - You don't design. If the SPEC is wrong, escalate to the human — don't silently fix it.
 - You don't write multiple SPECS at once. One SPEC per builder invocation. If the human asked for two, run them sequentially or in two separate sessions.

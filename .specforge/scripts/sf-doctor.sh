@@ -130,7 +130,7 @@ check_command_surface() {
     require_file "$skill_dir/SKILL.md" "skill $skill_name"
     public_skill=false
     case "$skill_name" in
-      sf-plan|sf-test|sf-ship|sf-review|sf-finalize|sf-status|sf-loop|sf-goal|sf-task)
+      sf|sf-plan|sf-quickspec|sf-test|sf-ship|sf-review|sf-finalize|sf-status|sf-loop|sf-task)
         public_skill=true
         ;;
     esac

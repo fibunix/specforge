@@ -6,10 +6,17 @@ SpecForge is a small, spec-driven workflow for AI-assisted development.
 Plan -> Build Loop -> Archive
 ```
 
-- Plan creates `ALIGN.md`, `DESIGN.md`, and approved SPEC files.
+Work is right-sized to three lanes so simple changes are not over-processed:
+
+- **task** (`/sf-task`) — mechanical change, no new behavior; one independent review.
+- **quick-spec** (`/sf-quickspec`) — small feature where the spec is the design (no ALIGN/DESIGN), one approval, one fresh-eyes review.
+- **full-plan** (`/sf-plan`) — complex or ambiguous work: ALIGN, DESIGN, approved SPEC files.
+
+`/sf "<request>"` classifies a request and routes it to the right lane.
+
 - The build loop writes red tests, ships implementation, and finalizes each SPEC.
 - Manual mode uses human approval at `/sf-ship` and `/sf-finalize`.
-- Autonomous mode uses independent reviewer PASS receipts through `/sf-loop` or `/sf-goal`.
+- Autonomous mode uses independent reviewer PASS receipts through `/sf-loop`.
 - New requirements wait in `NEXT.md` while active specs are unfinished.
 
 SpecForge works with any stack. Your project commands live in
@@ -62,13 +69,14 @@ export SPECFORGE_BASE_BRANCH=release
 Run these in your AI coding tool:
 
 ```text
+/sf "..."             classify a request and route it to the right lane
 /sf-plan              create and approve ALIGN.md, DESIGN.md, and specs
+/sf-quickspec "..."   small feature: one self-contained spec, single review
 /sf-test SPEC-ID      write red tests for one spec, then commit for review
 /sf-review SPEC-ID    review tests or implementation
 /sf-ship SPEC-ID      implement after tests are approved
 /sf-finalize SPEC-ID  verify, merge, and clean up
 /sf-loop              autonomously advance approved specs after reviewer PASS
-/sf-goal              goal-style wrapper around /sf-loop
 /sf-task "..."        execute a mechanical task with independent review
 /sf-status            show current state, queued next work, and requirement trace
 ```
@@ -88,17 +96,24 @@ Normal flow:
 /sf-finalize SPEC-ID
 ```
 
+Quick lane (small feature):
+
+```text
+/sf-quickspec "add a --json flag to the report command"
+```
+
 Autonomous flow after Plan approval:
 
 ```text
 /sf-loop
-/sf-goal
 ```
 
-`/sf-loop` and `/sf-goal` may continue through merge only after independent
-reviewers write current PASS receipts in `.specforge/reviews/`. If a reviewer
-cannot run, cannot write the receipt, or omits exact `VERDICT: PASS`, the loop
-stops for human action. Plan approval is never automated.
+Re-invoke `/sf-loop` until it prints `PIPELINE BLOCKED` (see
+`.specforge/docs/LOOP-RUNNERS.md` for per-tool drivers — Claude Code's native
+`/loop`, Codex, OpenCode, Pi). It may continue through merge only after
+independent reviewers write current PASS receipts in `.specforge/reviews/`. If a
+reviewer cannot run, cannot write the receipt, or omits exact `VERDICT: PASS`,
+the loop stops for human action. Plan approval is never automated.
 
 `SPEC-ID` resolves `.specforge/specs/SPEC-ID.md` or `.specforge/specs/SPEC-ID-<slug>.md`.
 Branches use the stable ID: `feature/SPEC-009` for `SPEC-009-frequency-record.md`.

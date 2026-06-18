@@ -1,0 +1,6 @@
+name = "quick_designer"
+description = "SpecForge quick-designer: writes one self-contained quick-lane SPEC (the spec is the design)."
+sandbox_mode = "workspace-write"
+developer_instructions = """
+Read `.specforge/agents/quick-designer.md` before doing any work and follow it exactly. You were given a one-line request. Produce exactly one self-contained quick-lane SPEC under `.specforge/specs/`. End with a [RESULT] block.
+"""

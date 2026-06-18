@@ -7,20 +7,23 @@ description: Advance the SpecForge build loop autonomously after human-approved 
 
 Each invocation moves eligible approved specs through the build loop as far as
 independent reviewer PASS receipts allow. Plan approval remains human-only.
-Pair with Claude Code's `/loop` feature:
 
-```
-/loop /sf-loop
-```
+Re-invoke `/sf-loop` until it finalizes everything or prints `PIPELINE BLOCKED`.
+`PIPELINE BLOCKED` is the universal "the loop is done for now" signal across
+runners. See `.specforge/docs/LOOP-RUNNERS.md` for how to drive the loop on each
+tool (Claude Code `/loop /sf-loop`, Codex, OpenCode, Pi).
 
 ## Each iteration
 
-1. Run `sf facts`, then read `.specforge/DESIGN.md`'s SPECS table for build
-   order and Depends-on rules. Use the same dependency rule as `/sf-status`: a
-   dependency is satisfied only when it is `done` and merged into the base
-   branch. Never start a dependent spec just because its branch is done.
+1. Run `sf facts`. If a `.specforge/DESIGN.md` exists, read its SPECS table for
+   build order and Depends-on rules. Use the same dependency rule as
+   `/sf-status`: a dependency is satisfied only when it is `done` and merged into
+   the base branch. Never start a dependent spec just because its branch is done.
+   Specs not listed in any DESIGN table — including `**Lane:** quick` specs,
+   which have no DESIGN.md — are independent: no dependencies, any order.
 
-2. Find the first eligible spec in DESIGN-table order, with this stage priority:
+2. Find the first eligible spec in DESIGN-table order (independent specs last),
+   with this stage priority:
    - State `done` + feature branch still exists → **implementation-review gate**
      at `done`, then **sf-finalize --autonomous**
    - State `tests-red` + tests committed on branch → **test-review gate** at
@@ -28,11 +31,17 @@ Pair with Claude Code's `/loop` feature:
    - State `approved` with dependencies satisfied → **sf-test**, then
      **test-review gate** at `tests-red`
 
+   **Quick-spec lane** (`**Lane:** quick`): there is no separate test-review
+   gate. Advance `approved` → **sf-test** → **sf-ship** in one step, then run the
+   single **implementation-review gate** at `done` (the reviewer also writes the
+   `tests-red` receipt for the historical red commit). This is the one
+   fresh-eyes verification for the quick lane.
+
    If no spec can advance, check for open tasks:
    - Run `sf task list` and look for any `state=open` task.
    - If found, invoke `/sf-task TASK-ID` for the first open task. The executor
-     commits task work, the independent task reviewer gates it, and only then
-     the coordinator merges it.
+     commits task work, the independent reviewer gates it, and only then the
+     coordinator merges it.
    - If multiple open tasks exist, handle one per loop iteration.
 
 3. After each independent reviewer **PASS**, immediately continue to the next phase
@@ -41,7 +50,7 @@ Pair with Claude Code's `/loop` feature:
    - implementation-review `done` PASS → **sf-finalize --autonomous**
 
    One invocation can carry a spec from `approved` all the way to finalized
-   if both independent reviewers pass and write receipts.
+   if its reviewers pass and write receipts.
 
 4. If no spec can move forward AND no open tasks remain — every spec is
    finalized, still `draft`, or blocked on a failed reviewer — **stop the
@@ -58,19 +67,20 @@ instructions for `<SPEC-ID>`.
 ## Reviewer Gates
 
 After sf-test commits tests and after sf-ship commits implementation, spawn an
-independent reviewer sub-agent before proceeding:
+independent reviewer sub-agent before proceeding. One reviewer covers every
+phase; the phase scopes what it checks:
 
 1. For `tests-red`, launch a fresh sub-agent using
-   `.specforge/skills/sf-test-reviewer/SKILL.md`.
+   `.specforge/skills/sf-reviewer/SKILL.md` with phase `tests-red`.
 2. For `done`, launch a fresh sub-agent using
-   `.specforge/skills/sf-implementation-reviewer/SKILL.md`.
+   `.specforge/skills/sf-reviewer/SKILL.md` with phase `done`.
 3. For tasks, launch a fresh sub-agent using
-   `.specforge/skills/sf-task-reviewer/SKILL.md`.
+   `.specforge/skills/sf-reviewer/SKILL.md` with phase `task`.
 
 Each reviewer must write the receipt defined in
 `.specforge/docs/REVIEW-CONTRACT.md`. The scripts validate the exact phase,
-reviewer name, base commit, reviewed head, command evidence, and final
-`VERDICT:` line.
+reviewer name (`sf-reviewer`), base commit, reviewed head, command evidence, and
+final `VERDICT:` line.
 
 Read only the script-validated receipt and final `VERDICT:` line:
 - `VERDICT: PASS` → log: `Review passed SPEC-NNN [phase] — continuing` and
@@ -86,9 +96,10 @@ Read only the script-validated receipt and final `VERDICT:` line:
 
 ## Hard rules
 
-- `draft → approved` still requires human approval via `/sf-plan`. Never
-  generate ALIGN.md or DESIGN.md automatically.
-- If ALIGN.md or DESIGN.md is missing, stop and report — do not generate them.
+- `draft → approved` still requires human approval via `/sf-plan` (full lane) or
+  approval of the single SPEC (quick lane). Never generate ALIGN.md or DESIGN.md
+  automatically.
+- If a full-lane spec's ALIGN.md or DESIGN.md is missing, stop and report — do
+  not generate them.
 - Run `sf lint` before advancing any spec. Fix lint errors first.
 - Worktrees are the default: never switch the main checkout's branch.
-- `/sf-goal` uses this exact workflow; do not maintain a second autonomous path.

@@ -190,6 +190,6 @@ SpecForge initialized.
 
 Next steps:
   1. Edit .specforge/config.yaml (projects, test/lint/build commands, source dirs)
-  2. Open the project in your editor and run /sf-plan
-  3. After Plan approval, continue manually or run /sf-loop or /sf-goal
+  2. Open the project in your editor and run /sf "<your request>" (it picks the right lane), or /sf-plan directly
+  3. After Plan approval, continue manually or run /sf-loop
 MSG

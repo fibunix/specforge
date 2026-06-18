@@ -4,6 +4,17 @@ A worked example — one tiny iteration from zero to merged.
 
 See [FLOW.md](FLOW.md) for the full normative reference.
 
+## Pick a lane (or let `/sf` pick)
+
+SpecForge right-sizes work to three lanes so simple changes aren't over-processed:
+
+- **task** (`/sf-task "..."`) — mechanical change, no new behavior.
+- **quick-spec** (`/sf-quickspec "..."`) — small, well-understood feature. The spec is the design (no ALIGN/DESIGN), one approval, one fresh-eyes review.
+- **full-plan** (`/sf-plan`) — complex or ambiguous work. The walkthrough below.
+
+Not sure? Run `/sf "<request>"` — it classifies the request and routes to the
+right lane. The walkthrough below is the **full-plan** lane.
+
 ---
 
 ## Iteration walkthrough
@@ -122,8 +133,8 @@ Autonomous option after Plan approval:
 ```
 
 `/sf-loop` can continue from red tests to implementation and finalize only when
-independent reviewers write current PASS receipts. `/sf-goal` is the same
-workflow with goal-style wording.
+independent reviewers write current PASS receipts. Re-invoke it until it prints
+`PIPELINE BLOCKED` (see `.specforge/docs/LOOP-RUNNERS.md` for per-tool drivers).
 
 ### 5. Review and approve the red tests
 

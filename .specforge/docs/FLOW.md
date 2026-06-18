@@ -19,9 +19,18 @@ Autonomous build-loop approvals:
 Approve specs -> independent tests-red PASS -> independent done PASS
 ```
 
-Plan approval is always human-only. After Plan approval, `/sf-loop` and
-`/sf-goal` may continue through merge only when independent reviewer receipts
-contain exact `VERDICT: PASS`.
+Plan approval is always human-only. After Plan approval, `/sf-loop` may continue
+through merge only when independent reviewer receipts contain exact
+`VERDICT: PASS`.
+
+## Lanes
+
+Work is right-sized to three lanes so simple changes are not over-processed.
+`/sf "<request>"` classifies a request and routes to the right one:
+
+- **task** (`/sf-task`) — mechanical change, no new behavior. No plan, no tests; one independent review.
+- **quick-spec** (`/sf-quickspec`) — small, well-understood feature. The spec is the design (no ALIGN/DESIGN), one approval, one fresh-eyes review at `done` (it also covers the red tests). See § Quick Lane.
+- **full-plan** (`/sf-plan`) — complex or ambiguous work: the full Plan → Build Loop below.
 
 Iterations repeat this loop. The active `.specforge/ALIGN.md`,
 `.specforge/DESIGN.md`, and `.specforge/specs/SPEC-*.md` describe only the
@@ -90,11 +99,11 @@ The explicit autonomous loop is:
 
 ```text
 /sf-loop
-/sf-goal
 ```
 
-`/sf-goal` is only a thin wrapper around `/sf-loop`; it reuses the same
-selection, reviewer receipts, and finalization rules.
+Re-invoke `/sf-loop` until it prints `PIPELINE BLOCKED`. The mechanism per tool
+(Claude Code's native `/loop`, Codex, OpenCode, Pi) is in
+`.specforge/docs/LOOP-RUNNERS.md`.
 
 The coordinator stays lean. It reads `sf facts`, the DESIGN SPECS dependency
 table, reviewer receipts, and `[RESULT]` blocks. Builders and validators read
@@ -242,6 +251,29 @@ human approval is required, but tasks do not self-validate.
 If a request doesn't meet the task criteria (new behavior, design decisions needed, API changes), the executor stops and tells you to use `/sf-plan` instead.
 
 Tasks are orthogonal to specs: they run on their own branches and don't affect the spec decision ladder. `sf facts` and `sf status` show open tasks alongside specs.
+
+## Quick Lane
+
+For a small, well-understood feature that introduces behavior but is too small
+for the full Plan phase, use the quick lane:
+
+```text
+/sf-quickspec "add a --json flag to the report command"
+```
+
+The quick-designer writes ONE self-contained SPEC (`**Lane:** quick`) — the spec
+is the design, so there is no ALIGN grill and no DESIGN.md. The Description
+carries the rationale. The human approves the single SPEC (the one gate; the
+quick-designer then sets `**State:** approved`). The builder writes red tests and
+implements as usual. A single fresh-eyes `sf-reviewer` pass at `done` reviews
+both the red-tests commit and the implementation, writing both receipts; then
+`sf finalize SPEC-ID --autonomous` merges.
+
+The quick lane drops the ALIGN grill, the DESIGN.md, and the separate
+test-review gate. It does NOT drop test-first, fresh-eyes review, or the
+receipt-gated merge. A quick spec uses the same `draft → approved → tests-red →
+done` lifecycle and the same enforcement (red history, scope, verify-build) as a
+full-lane spec, so `/sf-loop` can also drive it.
 
 ## Requirement Changes
 

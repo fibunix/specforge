@@ -26,8 +26,8 @@ assert_not_contains() {
   fi
 }
 
-canonical_commands=(sf-plan sf-test sf-ship sf-review sf-finalize sf-status sf-loop sf-goal sf-task)
-internal_skills=(sf-plan-reviewer sf-test-reviewer sf-implementation-reviewer sf-task-reviewer)
+canonical_commands=(sf sf-plan sf-quickspec sf-test sf-ship sf-review sf-finalize sf-status sf-loop sf-task)
+internal_skills=(sf-reviewer)
 legacy_commands=(sf-align sf-design sf-build sf-trace sf-next)
 primary_docs=(README.md AGENTS.md .specforge/docs/FLOW.md)
 
@@ -54,7 +54,7 @@ for skill in "${internal_skills[@]}"; do
 done
 
 for doc in "${primary_docs[@]}"; do
-  for command in /sf-plan /sf-test /sf-ship /sf-review /sf-finalize /sf-status /sf-loop /sf-goal /sf-task; do
+  for command in /sf-plan /sf-quickspec /sf-test /sf-ship /sf-review /sf-finalize /sf-status /sf-loop /sf-task; do
     assert_contains "$doc" "$command"
   done
 
@@ -94,10 +94,10 @@ assert_not_contains .specforge/skills/sf-status/SKILL.md "sf-snapshot"
 assert_contains .specforge/skills/sf-loop/SKILL.md "DESIGN"
 assert_contains .specforge/skills/sf-loop/SKILL.md "VERDICT: PASS"
 assert_contains .specforge/docs/REVIEW-CONTRACT.md "Review Receipt Contract"
-assert_contains .specforge/docs/REVIEW-CONTRACT.md "sf-test-reviewer"
-assert_contains .specforge/docs/REVIEW-CONTRACT.md "sf-implementation-reviewer"
-assert_contains .specforge/docs/REVIEW-CONTRACT.md "sf-task-reviewer"
-assert_contains .specforge/skills/sf-goal/SKILL.md "thin public wrapper"
+assert_contains .specforge/docs/REVIEW-CONTRACT.md "sf-reviewer"
+assert_contains .specforge/skills/sf-reviewer/SKILL.md "fresh eyes"
+assert_contains .specforge/skills/sf-quickspec/SKILL.md "spec is the design"
+assert_contains .specforge/skills/sf/SKILL.md "classif"
 assert_contains .specforge/skills/sf-task/SKILL.md "independent reviewer"
 
 assert_contains .specforge/skills/sf-review/SKILL.md "merge-base"

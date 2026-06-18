@@ -90,8 +90,8 @@ git commit -m "<TASK-ID>: <title>"
 
 **6. Stop for independent task review.**
 
-Do not merge. The coordinating `/sf-task` session spawns
-`sf-task-reviewer`, requires a PASS receipt, and then runs:
+Do not merge. The coordinating `/sf-task` session spawns the independent
+`sf-reviewer` (phase `task`), requires a PASS receipt, and then runs:
 
 ```bash
 bash .specforge/scripts/sf-worktree.sh merge <TASK-ID>

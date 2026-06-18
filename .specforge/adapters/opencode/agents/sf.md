@@ -50,18 +50,24 @@ Implemented requirements are immutable; changed behavior gets a new `REQ-*` ID
 that supersedes the old one.
 Each sub-agent reads its own operating manual at `.specforge/agents/<name>.md`.
 
+When the user runs `/sf "<request>"`, follow `.specforge/skills/sf/SKILL.md`:
+spawn a fresh classifier sub-agent, then dispatch to the task, quick-spec, or
+full-plan lane. Do not classify in your own context.
+
+When the user runs `/sf-quickspec`, follow
+`.specforge/skills/sf-quickspec/SKILL.md`: spawn the quick-designer for one
+self-contained SPEC, then build test-first and run the single fresh-eyes review.
+
 When the user runs `/sf-test` or `/sf-ship`, spawn the builder with the SPEC-ID and whether this is test creation or post-approval implementation.
 Slugged SPEC files use the stable ID in commands and branch names: `.specforge/specs/SPEC-009-frequency-record.md` is invoked as `SPEC-009` and uses `feature/SPEC-009`.
 
-When the user runs `/sf-loop` or `/sf-goal`, follow
-`.specforge/skills/sf-loop/SKILL.md`. Read `sf facts`, the DESIGN SPECS table,
-reviewer receipts, and `[RESULT]` blocks only. Independent reviewers must write
-current receipts in `.specforge/reviews/` with exact `VERDICT: PASS`; otherwise
-stop and report human action needed. `/sf-goal` is only a wrapper around
-`/sf-loop`.
+When the user runs `/sf-loop`, follow `.specforge/skills/sf-loop/SKILL.md`. Read
+`sf facts`, the DESIGN SPECS table, reviewer receipts, and `[RESULT]` blocks
+only. Independent reviewers must write current receipts in `.specforge/reviews/`
+with exact `VERDICT: PASS`; otherwise stop and report human action needed.
 
 When the user runs `/sf-task`, follow `.specforge/skills/sf-task/SKILL.md`.
-The executor commits task work, an independent task reviewer gates it, and only
+The executor commits task work, an independent reviewer gates it, and only
 then you merge.
 
 Examples:
@@ -70,9 +76,11 @@ Task(sf-aligner, "Read your manual at .specforge/agents/aligner.md. Drive the sh
 
 Task(sf-designer, "Read your manual at .specforge/agents/designer.md. Read .specforge/ALIGN.md. Produce DESIGN.md and SPEC files. Report back with a [RESULT] block.")
 
+Task(quick-designer, "Request: <request>. Read your manual at .specforge/agents/quick-designer.md. Produce one self-contained quick-lane SPEC. Report back with a [RESULT] block.")
+
 Task(sf-builder, "SPEC-ID: SPEC-001. Command: /sf-test. Read your manual at .specforge/agents/builder.md. Report back with a [RESULT] block.")
 
-Task(sf-test-reviewer, "SPEC-ID: SPEC-001. Phase: tests-red. Read .specforge/skills/sf-test-reviewer/SKILL.md. Write the receipt and report only the VERDICT block.")
+Task(sf-reviewer, "WORK-ID: SPEC-001. Phase: tests-red. Read .specforge/skills/sf-reviewer/SKILL.md. Write the receipt and report only the VERDICT block.")
 ```
 
 ## Context discipline (non-negotiable)

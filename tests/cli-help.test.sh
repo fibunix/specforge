@@ -50,7 +50,7 @@ assert_help_not_contains "sf trace"
 assert_help_not_contains "sf review"
 assert_help_not_contains "sf registry"
 
-for command in /sf-plan /sf-test /sf-ship /sf-review /sf-finalize /sf-status /sf-loop /sf-goal /sf-task; do
+for command in /sf-plan /sf-quickspec /sf-test /sf-ship /sf-review /sf-finalize /sf-status /sf-loop /sf-task; do
   assert_help_contains "$command"
 done
 

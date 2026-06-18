@@ -84,15 +84,16 @@ IDE options for 'sf init':
   opencode, claude-code, codex, pi, antigravity, all
 
 Use the slash commands in your editor for the full workflow:
-  /sf-plan        Plan the work: align, design, and approve SPECS
-  /sf-test ID     Write red tests, commit, and stop for review
-  /sf-review ID   Inspect committed tests or implementation changes
-  /sf-ship ID     Implement after test approval
-  /sf-finalize ID Verify, merge, and clean up after review
-  /sf-loop        Autonomously advance approved specs after reviewer PASS
-  /sf-goal        Goal-style wrapper around /sf-loop
-  /sf-task "..."  Execute a mechanical task with independent review
-  /sf-status      Facts from 'sf status' plus the agent's next-action reasoning
+  /sf "..."        Smart router: classify a request and pick the lane
+  /sf-plan         Full lane: align, design, and approve SPECS
+  /sf-quickspec    Quick lane: one self-contained SPEC, single review
+  /sf-test ID      Write red tests, commit, and stop for review
+  /sf-review ID    Inspect committed tests or implementation changes
+  /sf-ship ID      Implement after test approval
+  /sf-finalize ID  Verify, merge, and clean up after review
+  /sf-loop         Autonomously advance approved specs after reviewer PASS
+  /sf-task "..."   Execute a mechanical task with independent review
+  /sf-status       Facts from 'sf status' plus the agent's next-action reasoning
 
 Wave planning, review judgment, and requirement traceability are agent-side:
 run /sf-plan, /sf-review, /sf-loop, or ask the agent — scripts enforce, agents interpret.

@@ -6,13 +6,15 @@ Independent reviewers write one receipt per reviewed commit under:
 .specforge/reviews/<WORK-ID>/<phase>-<commit>.md
 ```
 
-`WORK-ID` is a `SPEC-*` or `TASK-*` ID. Supported phases:
+`WORK-ID` is a `SPEC-*` or `TASK-*` ID. Every phase is reviewed by the one
+`sf-reviewer` skill (run as a fresh sub-agent); the phase scopes what it checks
+and all receipts use `reviewer: sf-reviewer`. Supported phases:
 
 | Phase | Reviewer | Reviewed commit |
 |-------|----------|-----------------|
-| `tests-red` | `sf-test-reviewer` | commit whose SPEC has `State: tests-red` |
-| `done` | `sf-implementation-reviewer` | current completed SPEC branch head |
-| `task` | `sf-task-reviewer` | current completed TASK branch head |
+| `tests-red` | `sf-reviewer` | commit whose SPEC has `State: tests-red` |
+| `done` | `sf-reviewer` | current completed SPEC branch head |
+| `task` | `sf-reviewer` | current completed TASK branch head |
 
 Receipts are machine-checked. Required fields:
 

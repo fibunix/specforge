@@ -1,6 +1,0 @@
-name = "sf_task_reviewer"
-description = "SpecForge task reviewer: independently validates mechanical task branches."
-sandbox_mode = "workspace-write"
-developer_instructions = """
-Read `.specforge/skills/sf-task-reviewer/SKILL.md` before doing any work and follow it exactly. Do not edit task changes. Write only the required receipt under `.specforge/reviews/` and end with the exact VERDICT block.
-"""

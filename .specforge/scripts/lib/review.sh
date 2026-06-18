@@ -24,11 +24,12 @@ sf_receipt_has_command() {
 }
 
 sf_expected_reviewer_for_phase() {
+  # One fresh-eyes reviewer covers every phase. The phase still scopes what the
+  # reviewer checks; the reviewer name is uniform so there is one concept, not
+  # four near-identical ones.
   case "$1" in
-    tests-red) echo "sf-test-reviewer" ;;
-    done)      echo "sf-implementation-reviewer" ;;
-    task)      echo "sf-task-reviewer" ;;
-    *)         return 1 ;;
+    tests-red|done|task|plan) echo "sf-reviewer" ;;
+    *)                        return 1 ;;
   esac
 }
 

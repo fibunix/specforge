@@ -1,24 +1,32 @@
 <!-- BEGIN SPECFORGE MANAGED BLOCK v1 -->
 # SpecForge
 
-Spec-driven, TDD-first development. One shared understanding, one source of truth per spec.
+Spec-driven, TDD-first development. One shared understanding, one source of truth per spec. Work is **right-sized to three lanes** so simple changes are not over-processed.
 
 ## Start
 
 - Read `.specforge/config.yaml`. If phase state is unclear, run `/sf-status`.
+- Unsure which lane? Run `/sf "<request>"` — it classifies and routes for you.
 - Use one phase per fresh agent session and stop at the next approval gate.
 - Follow `.specforge/skills/<command>/SKILL.md` for phase behavior. Flow reference and rules: `.specforge/docs/FLOW.md`.
+
+## Lanes
+
+- **task** (`/sf-task`) — mechanical change, no new behavior. No plan, no tests; one independent review.
+- **quick-spec** (`/sf-quickspec`) — small, well-understood feature. The spec is the design (no ALIGN/DESIGN), one approval, one fresh-eyes review.
+- **full-plan** (`/sf-plan`) — complex or ambiguous work. ALIGN + DESIGN + per-spec test/impl review.
 
 ## Commands
 
 ```bash
-/sf-plan              # approve ALIGN.md, DESIGN.md, and SPECS
+/sf "..."             # smart router: classify a request and pick the lane
+/sf-plan              # full lane: approve ALIGN.md, DESIGN.md, and SPECS
+/sf-quickspec "..."   # quick lane: one self-contained SPEC, single review
 /sf-test SPEC-ID      # create/switch feature branch and write red tests
 /sf-review SPEC-ID    # inspect tests or implementation changes
 /sf-ship SPEC-ID      # implement after red tests are approved
 /sf-finalize SPEC-ID  # verify, merge, and delete the feature branch
 /sf-loop              # autonomous build loop after reviewer PASS receipts
-/sf-goal              # goal-style wrapper around /sf-loop
 /sf-task "..."        # mechanical task with independent review
 /sf-status            # read disk, queued NEXT.md, status, and requirement trace
 ```
@@ -32,7 +40,7 @@ Spec-driven, TDD-first development. One shared understanding, one source of trut
 - `/sf-test SPEC-ID` means Plan artifacts were approved.
 - `/sf-ship SPEC-ID` means red tests were approved.
 - `/sf-finalize SPEC-ID` means the final diff was approved.
-- `/sf-loop` and `/sf-goal` may replace red-test and final-diff human approval
+- `/sf-loop` may replace red-test and final-diff human approval
   only with independent reviewer receipts that contain exact `VERDICT: PASS`.
 - Never move through a manual gate unless the human explicitly requests the next command.
 

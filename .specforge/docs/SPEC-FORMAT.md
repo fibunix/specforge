@@ -49,6 +49,28 @@ Branch names also use the stable ID: `feature/SPEC-009`.
 <1-3 lines. Link to the relevant section of DESIGN.md. Note any non-obvious decisions.>
 ```
 
+## Lanes: full vs. quick
+
+Most specs come from `/sf-plan` (the **full** lane) and trace to ALIGN.md +
+DESIGN.md. A **quick** spec comes from `/sf-quickspec` (or `/sf` routing there):
+it is self-contained — the spec *is* the design, so there is no ALIGN.md or
+DESIGN.md. Mark it with an optional field and use the self-contained template:
+
+```markdown
+**Traces to:** (quick-spec: <one-line request>)
+**State:** draft
+**Lane:** quick
+**Iteration:** <active iteration ID, or `none` if no plan is active>
+```
+
+Copy `.specforge/specs/TEMPLATE-QUICK.md` for a quick spec; its `## Description`
+carries the rationale a DESIGN.md would otherwise hold. A quick spec uses the
+same lifecycle and the same enforcement as a full spec — it just skips the ALIGN
+grill, the DESIGN.md, and the separate test-review gate (one fresh-eyes review at
+`done` covers both red tests and implementation). `**Lane:**` is absent or
+`full` for normal specs; it is advisory metadata for the loop, not parsed for
+state decisions.
+
 ## Rules for good SPECS
 
 - **One feature per SPEC.** If your spec has two distinct features, split it.
@@ -60,10 +82,12 @@ Branch names also use the stable ID: `feature/SPEC-009`.
 - **Implemented requirements are immutable.** If behavior changes after a
   requirement is done, create a new `REQ-*` ID and link the old one in
   `## Supersedes`.
-- **Iteration IDs are required.** Every active SPEC must include
-  `**Iteration:** ITER-...` so active work can be separated from archives.
-  IDs are sequential and named: `ITER-NNN-<slug>` (the Aligner assigns them
-  via `sf-iteration.sh next-id <slug>`).
+- **Iteration IDs are required.** Every active SPEC must include an
+  `**Iteration:**` field so active work can be separated from archives. Full-lane
+  IDs are sequential and named: `ITER-NNN-<slug>` (the Aligner assigns them via
+  `sf-iteration.sh next-id <slug>`). A quick spec stamps the active iteration if
+  one exists, or `none` when no plan is active. When a real iteration is active,
+  every active spec — quick or full — must match it (the linter enforces this).
 - **Test files are listed in the SPEC.** The builder creates exactly these files. If a new test is needed mid-build, the human updates the SPEC.
 - **Implementation files are listed in the SPEC.** Same logic — keeps the work bounded.
 - **No code in the SPEC.** The SPEC describes *what*; the builder writes *how*.

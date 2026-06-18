@@ -82,23 +82,26 @@ copy_path() {
 }
 
 copy_spec_template() {
-  local src="$SRC_SF/specs/TEMPLATE.md"
-  local dst="$SF/specs/TEMPLATE.md"
-
-  [ -f "$src" ] || return 0
-  if [ "$SAME_SOURCE" = true ]; then
-    echo "  ✓ .specforge/specs/TEMPLATE.md already using source"
-    return 0
-  fi
-  if [ "$DRY_RUN" = true ]; then
-    echo "  → would update .specforge/specs/TEMPLATE.md"
-    return 0
-  fi
-
-  mkdir -p "$SF/specs"
-  cp "$src" "$dst"
-  [ -f "$SF/specs/.gitkeep" ] || touch "$SF/specs/.gitkeep"
-  echo "  ✓ updated .specforge/specs/TEMPLATE.md"
+  # specs/ is project-owned (it holds user SPEC files), so the bulk copy_path
+  # sweep skips it. The framework-owned spec templates are synced explicitly.
+  local name src dst
+  for name in TEMPLATE.md TEMPLATE-QUICK.md; do
+    src="$SRC_SF/specs/$name"
+    dst="$SF/specs/$name"
+    [ -f "$src" ] || continue
+    if [ "$SAME_SOURCE" = true ]; then
+      echo "  ✓ .specforge/specs/$name already using source"
+      continue
+    fi
+    if [ "$DRY_RUN" = true ]; then
+      echo "  → would update .specforge/specs/$name"
+      continue
+    fi
+    mkdir -p "$SF/specs"
+    cp "$src" "$dst"
+    echo "  ✓ updated .specforge/specs/$name"
+  done
+  [ "$DRY_RUN" = true ] || [ "$SAME_SOURCE" = true ] || { [ -f "$SF/specs/.gitkeep" ] || touch "$SF/specs/.gitkeep"; }
 }
 
 copy_task_template() {

@@ -54,8 +54,8 @@ require_autonomous_receipts() {
   red_head="$(sf_tests_red_commit_for_branch "$ROOT" "$branch" "$spec_id" 2>/dev/null || true)"
   [ -n "$red_head" ] || sf_die "autonomous finalize requires a committed State: tests-red history entry for $spec_id"
 
-  sf_require_pass_receipt "$ROOT" "$spec_id" tests-red "$red_head" sf-test-reviewer
-  sf_require_pass_receipt "$ROOT" "$spec_id" done "$head" sf-implementation-reviewer
+  sf_require_pass_receipt "$ROOT" "$spec_id" tests-red "$red_head" sf-reviewer
+  sf_require_pass_receipt "$ROOT" "$spec_id" done "$head" sf-reviewer
 }
 
 # Rebase a branch living in a worktree onto the base branch, rerun

@@ -55,7 +55,7 @@ Apply the first rung that matches; that is the `Next:` line.
    archive this iteration and start the next (NEXT.md is the queued brief if
    present).
 
-**Loop/goal mode**: When `/sf-loop` or `/sf-goal` is active, independent
+**Loop mode**: When `/sf-loop` is active, independent
 reviewer sub-agents handle `tests-red`, `done`, and task transitions by writing
 PASS receipts in `.specforge/reviews/`. Missing receipts, stale heads, or any
 verdict other than exact `VERDICT: PASS` stop the loop. `/sf-review SPEC-ID`

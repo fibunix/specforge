@@ -108,11 +108,10 @@ chmod +x .specforge/adapters/<my-ide>/adapt.sh
 - The adapter never overwrites a whole root `CLAUDE.md`; it only inserts or replaces the SpecForge-managed block.
 - Public SpecForge commands are installed as skills, not `.claude/commands/`.
   Manual side-effect commands (`sf-ship`, `sf-finalize`, `sf-test`) use
-  `disable-model-invocation: true`; explicit autonomous commands (`sf-loop`,
-  `sf-goal`) may advance only after independent reviewer PASS receipts.
-- Internal reviewer skills (`sf-test-reviewer`, `sf-implementation-reviewer`,
-  `sf-plan-reviewer`, `sf-task-reviewer`) are
-  installed as skills for sub-agents but do not need slash-command wrappers.
+  `disable-model-invocation: true`; the autonomous command `sf-loop`
+  may advance only after independent reviewer PASS receipts.
+- The internal `sf-reviewer` skill (one fresh-eyes reviewer for every phase) is
+  installed as a skill for sub-agents but does not need a slash-command wrapper.
 - On re-run, the adapter removes any stale `sf-*.md` symlinks from `.claude/commands/` left by older installs.
 - Reference: https://docs.anthropic.com/en/docs/claude-code/memory
 

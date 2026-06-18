@@ -224,7 +224,7 @@ spec_id: SPEC-001
 phase: tests-red
 base: base
 head: red
-reviewer: sf-test-reviewer
+reviewer: sf-reviewer
 verdict: PASS
 commands run:
 - bash .specforge/scripts/sf-test.sh
@@ -236,7 +236,7 @@ spec_id: SPEC-001
 phase: done
 base: base
 head: stale
-reviewer: sf-implementation-reviewer
+reviewer: sf-reviewer
 verdict: PASS
 commands run:
 - bash .specforge/scripts/sf-verify-build.sh SPEC-001
@@ -249,7 +249,7 @@ spec_id: SPEC-001
 phase: tests-red
 base: $BASE_COMMIT
 head: stale
-reviewer: sf-test-reviewer
+reviewer: sf-reviewer
 verdict: PASS
 commands run:
 - bash .specforge/scripts/sf-test.sh
@@ -262,7 +262,7 @@ spec_id: SPEC-001
 phase: tests-red
 base: $BASE_COMMIT
 head: $RED_COMMIT
-reviewer: sf-test-reviewer
+reviewer: sf-reviewer
 verdict: PASS
 commands run:
 - bash .specforge/scripts/sf-test.sh
@@ -281,13 +281,13 @@ commands run:
 findings: none
 VERDICT: PASS
 EOF
-assert_fails_with "autonomous done receipt reviewer" 'reviewer must be sf-implementation-reviewer' bash -c "cd '$PROJECT' && bash .specforge/scripts/sf-finalize.sh SPEC-001 --autonomous"
+assert_fails_with "autonomous done receipt reviewer" 'reviewer must be sf-reviewer' bash -c "cd '$PROJECT' && bash .specforge/scripts/sf-finalize.sh SPEC-001 --autonomous"
 cat > "$PROJECT/.specforge/reviews/SPEC-001/done-$HEAD_COMMIT.md" <<EOF
 spec_id: SPEC-001
 phase: done
 base: $BASE_COMMIT
 head: $HEAD_COMMIT
-reviewer: sf-implementation-reviewer
+reviewer: sf-reviewer
 verdict: PASS
 commands run:
 - bash .specforge/scripts/sf-verify-build.sh SPEC-001
@@ -349,7 +349,7 @@ spec_id: TASK-001
 phase: task
 base: $TASK_BASE
 head: $TASK_HEAD
-reviewer: sf-task-reviewer
+reviewer: sf-reviewer
 verdict: PASS
 commands run:
 - bash .specforge/scripts/sf-test.sh

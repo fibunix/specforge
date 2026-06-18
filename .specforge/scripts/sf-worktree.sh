@@ -87,7 +87,7 @@ merge_worktree() {
 
   if [[ "$SPEC_ID" == TASK-* ]]; then
     head="$(git -C "$ROOT" rev-parse "$BRANCH")"
-    sf_require_pass_receipt "$ROOT" "$SPEC_ID" task "$head" sf-task-reviewer
+    sf_require_pass_receipt "$ROOT" "$SPEC_ID" task "$head" sf-reviewer
   fi
 
   git merge --ff-only "$BRANCH" >/dev/null 2>&1 || sf_die "fast-forward merge into $BASE_BRANCH failed; resolve manually in $WT"

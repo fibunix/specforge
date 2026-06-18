@@ -94,9 +94,9 @@ before_owned="$(checksum_files "${owned_files[@]}")"
 before_agents="$(checksum_files "$PROJECT/AGENTS.md" "$PROJECT/CLAUDE.md")"
 
 rm -rf "$PROJECT/.specforge/root"
-rm -rf "$PROJECT/.specforge/skills/sf-goal"
-rm -rf "$PROJECT/.specforge/skills/sf-test-reviewer"
-rm -f "$PROJECT/.specforge/adapters/opencode/commands/sf-goal.md"
+rm -rf "$PROJECT/.specforge/skills/sf-quickspec"
+rm -rf "$PROJECT/.specforge/skills/sf-reviewer"
+rm -f "$PROJECT/.specforge/adapters/opencode/commands/sf-quickspec.md"
 ln -s "../../.specforge/skills/sf-auto-review" "$PROJECT/.claude/skills/sf-auto-review"
 bash "$ROOT/install.sh" --source "$ROOT" --dir "$PROJECT" --update --dry-run --ide claude-code >/dev/null
 
@@ -107,8 +107,8 @@ assert_equal "$before_agents" "$after_dry_agents" "instruction files after dry-r
 if [ -e "$PROJECT/.specforge/root" ]; then
   fail "dry-run should not create .specforge/root"
 fi
-if [ -e "$PROJECT/.specforge/skills/sf-goal" ]; then
-  fail "dry-run should not restore .specforge/skills/sf-goal"
+if [ -e "$PROJECT/.specforge/skills/sf-quickspec" ]; then
+  fail "dry-run should not restore .specforge/skills/sf-quickspec"
 fi
 if [ ! -L "$PROJECT/.claude/skills/sf-auto-review" ]; then
   fail "dry-run should not remove stale Claude Code skill symlink"
@@ -121,14 +121,14 @@ assert_equal "$before_owned" "$after_update_owned" "project-owned files after up
 if [ ! -f "$PROJECT/.specforge/root/SPECFORGE.md" ]; then
   fail "update should restore .specforge/root/SPECFORGE.md"
 fi
-if [ ! -f "$PROJECT/.specforge/skills/sf-goal/SKILL.md" ]; then
-  fail "update should restore .specforge/skills/sf-goal/SKILL.md"
+if [ ! -f "$PROJECT/.specforge/skills/sf-quickspec/SKILL.md" ]; then
+  fail "update should restore .specforge/skills/sf-quickspec/SKILL.md"
 fi
-if [ ! -f "$PROJECT/.specforge/skills/sf-test-reviewer/SKILL.md" ]; then
-  fail "update should restore .specforge/skills/sf-test-reviewer/SKILL.md"
+if [ ! -f "$PROJECT/.specforge/skills/sf-reviewer/SKILL.md" ]; then
+  fail "update should restore .specforge/skills/sf-reviewer/SKILL.md"
 fi
-if [ ! -f "$PROJECT/.specforge/adapters/opencode/commands/sf-goal.md" ]; then
-  fail "update should restore .specforge/adapters/opencode/commands/sf-goal.md"
+if [ ! -f "$PROJECT/.specforge/adapters/opencode/commands/sf-quickspec.md" ]; then
+  fail "update should restore .specforge/adapters/opencode/commands/sf-quickspec.md"
 fi
 if [ -e "$CALLER/CLAUDE.md" ] || [ -e "$CALLER/.claude" ]; then
   fail "update adapter should not write to caller working directory"
@@ -137,14 +137,14 @@ fi
 assert_contains "$PROJECT/AGENTS.md" "User before SpecForge"
 assert_contains "$PROJECT/AGENTS.md" "User after SpecForge"
 assert_contains "$PROJECT/AGENTS.md" "/sf-loop"
-assert_contains "$PROJECT/AGENTS.md" "/sf-goal"
+assert_contains "$PROJECT/AGENTS.md" "/sf-quickspec"
 assert_contains "$PROJECT/AGENTS.md" "<!-- BEGIN SPECFORGE MANAGED BLOCK v1 -->"
 assert_contains "$PROJECT/AGENTS.md" "<!-- END SPECFORGE MANAGED BLOCK v1 -->"
 assert_contains "$PROJECT/CLAUDE.md" "<!-- BEGIN SPECFORGE MANAGED BLOCK v1 -->"
 assert_contains "$PROJECT/CLAUDE.md" "/sf-loop"
-assert_contains "$PROJECT/CLAUDE.md" "/sf-goal"
-[ -e "$PROJECT/.claude/skills/sf-goal" ] || fail "update should link Claude Code sf-goal skill"
-[ -e "$PROJECT/.claude/skills/sf-test-reviewer" ] || fail "update should link Claude Code internal reviewer skill"
+assert_contains "$PROJECT/CLAUDE.md" "/sf-quickspec"
+[ -e "$PROJECT/.claude/skills/sf-quickspec" ] || fail "update should link Claude Code sf-quickspec skill"
+[ -e "$PROJECT/.claude/skills/sf-reviewer" ] || fail "update should link Claude Code internal reviewer skill"
 [ ! -L "$PROJECT/.claude/skills/sf-auto-review" ] || fail "update should remove stale Claude Code sf-auto-review skill"
 
 begin_count="$(grep -Fxc "<!-- BEGIN SPECFORGE MANAGED BLOCK v1 -->" "$PROJECT/AGENTS.md")"
