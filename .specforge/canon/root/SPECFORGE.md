@@ -20,8 +20,8 @@ Yes → spec. When unsure, escalate up.
 
 ## State is observed, not stored
 There is no state field. State is derived from git + filesystem:
-work dir in `work/active/<slug>/`, branch `feature/<slug>`, the red-tests commit,
-a `Verified-by:` trailer on HEAD, and (when done) a move to `work/archive/`.
+work dir in `.specforge/work/active/<slug>/`, branch `feature/<slug>`, the red-tests commit,
+a `Verified-by:` trailer on HEAD, and (when done) a move to `.specforge/work/archive/`.
 Run `sf status` for the facts.
 
 ## Two human gates only
@@ -41,5 +41,7 @@ trailer. Everything reversible (planning/testing/implementing) is unguarded.
 `/sf "<request>"` route & drive · `/sf-loop` autonomous coordinator ·
 `/sf-align` · `/sf-design` · `/sf-build` · `/sf-status`.
 
-Artifacts live in `work/active/<slug>/` (WORK.md, ALIGN.md?, DESIGN.md?, SPEC.md).
-Config is `project.yaml`. Backlog is `NEXT.md`.
+Artifacts live in `.specforge/work/active/<slug>/` (WORK.md, ALIGN.md?, DESIGN.md?, SPEC.md).
+Config is `project.yaml`. Backlog is `NEXT.md`. Cross-item learnings live in
+`.specforge/learnings/` (one file each + `INDEX.md`); recall relevant ones at the
+start of a loop, write one when a surprise would help a future agent.

@@ -15,7 +15,7 @@ full operating manual). Given a request:
    - **Yes** → `spec` lane; decide whether a `DESIGN.md` is warranted
      (cross-component / new data shape / live decision).
    When unsure, escalate up a lane.
-3. Pick a short kebab-case `<slug>`. Create `work/active/<slug>/WORK.md` from the
+3. Pick a short kebab-case `<slug>`. Create `.specforge/work/active/<slug>/WORK.md` from the
    template; record the lane and a one-sentence routing reason.
 4. Drive the lane by spawning fresh subagents — never do the work yourself, and
    never let one agent verify its own output:

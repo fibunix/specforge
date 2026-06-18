@@ -23,7 +23,7 @@ no human gate.
 
 **spec** (new/changed behavior):
 1. *(optional)* **align** — when the request is fuzzy, the aligner writes
-   `work/active/<slug>/ALIGN.md` (problem, success criteria, out-of-scope, open
+   `.specforge/work/active/<slug>/ALIGN.md` (problem, success criteria, out-of-scope, open
    questions). Human approves.
 2. **design** — the designer writes `SPEC.md` (always) and `DESIGN.md` (only when
    the work crosses components, adds a data shape, or has a live decision).
@@ -32,18 +32,18 @@ no human gate.
 4. **implement** — implementer makes them green, commits.
 5. **verify** — verifier reviews tests-then-impl, appends `Verified-by:` on pass.
 6. **merge** — **Human approves — Gate 2** — then `sf merge <slug>` (guardrail:
-   green tests + trailer), which archives the item to `work/archive/<date>-<slug>/`.
+   green tests + trailer), which archives the item to `.specforge/work/archive/<date>-<slug>/`.
 
 ## State (derived, never stored)
 
 | State | Observed by |
 |-------|-------------|
-| planning | `work/active/<slug>/` exists, no `feature/<slug>` branch |
+| planning | `.specforge/work/active/<slug>/` exists, no `feature/<slug>` branch |
 | ready | branch created (= Gate 1 approval) |
 | tests-red | HEAD commit subject contains "red tests"; tests fail |
 | implementing | commits past red tests; no trailer yet |
 | verified | HEAD has a `Verified-by:` trailer |
-| done | moved to `work/archive/` |
+| done | moved to `.specforge/work/archive/` |
 
 `sf status` prints all of this. It enforces nothing.
 
@@ -66,6 +66,20 @@ escalates as data (`needs_human` + reason: design decision / rework limit /
 ambiguity / external blocker). Always escalate immediately on: a design ambiguity
 surfaced mid-build, an author that declares itself blocked, or a verifier-flagged
 scope/contract change that wasn't in the approved design.
+
+## Learnings (cross-item memory)
+
+Durable findings that would surprise a future agent live in
+`.specforge/learnings/` — one file per learning plus an always-loaded `INDEX.md`.
+See `.specforge/canon/docs/LEARNINGS.md` for the format and criteria.
+
+- **Recall:** at the start of a loop/session read `INDEX.md`, then `grep` it by the
+  item's area and key nouns and fold any matching entries into the worker's brief
+  (or `WORK.md`). Don't load the whole store.
+- **Write:** the agent that *discovers* a qualifying surprise (most often the
+  implementer or verifier) adds a `<finding>.md` file and an `INDEX.md` line in the
+  same commit. Append-only; three lines of body is plenty. Skip anything derivable
+  from the SPEC/DESIGN or trivial to rediscover.
 
 ## Editors without programmatic subagents
 

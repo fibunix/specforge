@@ -14,12 +14,16 @@ gates and on escalation.
 ## Operating loop
 
 1. Run `sf status` to see active work items and their derived state. Read the
-   `WORK.md` of the item in play for its lane and routing note. Load nothing else.
+   `WORK.md` of the item in play for its lane and routing note, and read
+   `.specforge/learnings/INDEX.md` once (cheap). Load nothing else.
 2. Pick the next action by lane and state (see ladders below).
 3. Spawn ONE worker subagent with a **minimal brief**: the slug, the phase, and
-   one line of instruction. Do NOT paste the worker's manual or other artifacts —
-   each worker reads its own manual and the files it needs from disk.
-4. Read back the worker's `RESULT` block. Decide the next action.
+   one line of instruction. When the index has entries matching the item's area or
+   nouns, name the relevant `learnings/<file>` in the brief so the worker reads it.
+   Do NOT paste the worker's manual or other artifacts — each worker reads its own
+   manual and the files it needs from disk.
+4. Read back the worker's `RESULT` block. If it surfaced a `learning:`, make sure
+   it landed in `.specforge/learnings/` (file + `INDEX.md` line). Decide the next action.
 5. Repeat until a human gate, an escalation, or no item can advance.
 
 ## Routing a new request
@@ -28,7 +32,7 @@ Classify with one question: *does this change observable behavior?*
 - **No** → `direct` lane.
 - **Yes** → `spec` lane; then decide *needs a DESIGN.md?* (cross-component / new
   data shape / live decision = yes).
-Record the lane + one-sentence reason in `work/active/<slug>/WORK.md`. When unsure,
+Record the lane + one-sentence reason in `.specforge/work/active/<slug>/WORK.md`. When unsure,
 escalate up a lane. A misroute costs one redo — don't agonize.
 
 ## Direct lane ladder

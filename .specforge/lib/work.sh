@@ -18,13 +18,13 @@ sf_apply_config_base_branch() {
   return 0
 }
 
-sf_active_dir()  { echo "$1/work/active"; }
-sf_archive_dir() { echo "$1/work/archive"; }
+sf_active_dir()  { echo "$1/.specforge/work/active"; }
+sf_archive_dir() { echo "$1/.specforge/work/archive"; }
 
 # List active work-item slugs (one per line).
 sf_active_slugs() {
   local root="$1" d
-  for d in "$root"/work/active/*/; do
+  for d in "$root"/.specforge/work/active/*/; do
     [ -d "$d" ] || continue
     basename "$d"
   done
@@ -39,13 +39,13 @@ sf_work_state() {
   branch="$(sf_branch_for_slug "$slug")"
 
   # Archived => done.
-  if ls -d "$root"/work/archive/*-"$slug"/ >/dev/null 2>&1; then
+  if ls -d "$root"/.specforge/work/archive/*-"$slug"/ >/dev/null 2>&1; then
     echo "done"; return 0
   fi
 
   if ! sf_branch_exists "$root" "$branch"; then
     # No branch yet: planning (SPEC not approved) — or unknown if no dir.
-    if [ -d "$root/work/active/$slug" ]; then echo "planning"; else echo "unknown"; fi
+    if [ -d "$root/.specforge/work/active/$slug" ]; then echo "planning"; else echo "unknown"; fi
     return 0
   fi
 

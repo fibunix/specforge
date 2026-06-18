@@ -39,11 +39,18 @@ worktree at `.worktrees/<slug>/`. Read `SPEC.md` and the diff for the phase
   (Only the `impl`/`task` sign-off needs to land on the final HEAD for `sf merge`;
   a `tests`-phase pass just returns `approved` so the implementer can start.)
 
+With fresh eyes on the whole diff you may spot a durable surprise the author didn't
+record — a contradicted assumption, a hidden coupling, a runtime-only constraint.
+If it meets the bar in `canon/docs/LEARNINGS.md`, add a
+`.specforge/learnings/<finding>.md` + `INDEX.md` line (on your sign-off commit) and
+note it in `learning:` below. Don't manufacture one; most verifications have none.
+
 ```
 RESULT
   outcome: approved | changes_requested
   phase: <phase>
   head: <sha>
+  learning: <one line + filename, or none>
   findings:
     - <only when changes_requested>
 ```

@@ -27,10 +27,16 @@ a fixed contract.
 If the SPEC is ambiguous or untestable as written, stop and report `blocked` with
 the specific question — do not guess.
 
+If a new test passes when you expected it to fail (the behavior already exists, or
+is covered elsewhere), that's a learning worth recording: add a
+`.specforge/learnings/<finding>.md` + `INDEX.md` line (see `canon/docs/LEARNINGS.md`)
+in this commit and note it in `learning:` below.
+
 ```
 RESULT
   outcome: committed | blocked
   commit: <sha>
   tests_failing: <count>
+  learning: <one line + filename, or none>
   note: <one line>
 ```

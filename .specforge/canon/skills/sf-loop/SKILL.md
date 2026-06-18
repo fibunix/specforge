@@ -9,6 +9,10 @@ side_effects: true
 Drive every active work item forward, pausing only at the two human gates and on
 escalation. Act as the `coordinator`.
 
+At the start, read `.specforge/learnings/INDEX.md` once and keep it in mind; for an
+item being built, `grep` it by the SPEC's area/nouns and name any matching
+`learnings/<file>` in the worker's brief.
+
 Each pass:
 1. Run `sf status`. For each active item, determine its derived state.
 2. Advance the most-ready item by spawning the right fresh subagent:

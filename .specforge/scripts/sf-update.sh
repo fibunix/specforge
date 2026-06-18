@@ -4,8 +4,10 @@
 #
 #   sf-update.sh --root <project> [--source <specforge-repo>] [--dry-run] [--ide all|list]
 #
-# Project-owned (NEVER touched): project.yaml, work/, NEXT.md, and user content
-# in root AGENTS.md/CLAUDE.md outside the managed block. Generated IDE files are
+# Project-owned (NEVER touched): project.yaml, .specforge/work/,
+# .specforge/learnings/, NEXT.md, and user content in root AGENTS.md/CLAUDE.md
+# outside the managed block — update only refreshes canon/profiles/lib/scripts.
+# Generated IDE files are
 # overwritten only when they carry the SpecForge marker; user files are preserved.
 
 set -euo pipefail

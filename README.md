@@ -15,7 +15,7 @@ verify each other's work. The rule above all: **no agent grades its own homework
   the implementer never edits tests; the verifier authored neither.
 - **State is observed, not stored.** No state field, no state-machine script.
   Lifecycle is derived from git + filesystem (work dir, `feature/<slug>` branch,
-  the red-tests commit, a `Verified-by:` trailer, the move to `work/archive/`).
+  the red-tests commit, a `Verified-by:` trailer, the move to `.specforge/work/archive/`).
   `sf status` reports it; it enforces nothing.
 - **Two human gates only.** Approve the plan (Gate 1) and approve the merge
   (Gate 2). The direct lane has none.
@@ -32,10 +32,10 @@ curl -fsSL https://raw.githubusercontent.com/fibunix/specforge/main/install.sh |
 ```
 
 Re-running it on an existing project re-fetches the latest framework and
-re-projects it, preserving everything you own — `project.yaml`, `work/`,
-`NEXT.md`, and your own text in `AGENTS.md`/`CLAUDE.md` outside the managed
-block. It prints `Updating` instead of `Installing` when it detects an existing
-install.
+re-projects it, preserving everything you own — `project.yaml`,
+`.specforge/work/`, `.specforge/learnings/`, `NEXT.md`, and your own text in
+`AGENTS.md`/`CLAUDE.md` outside the managed block. It prints `Updating` instead
+of `Installing` when it detects an existing install.
 
 Or from a local clone:
 
@@ -71,8 +71,9 @@ Everything requiring judgment lives in skills/agents, not the CLI.
   profiles/     one tiny file per IDE (data + emit hooks)
   lib/          shared bash (projector, frontmatter, git, work-state, ...)
   scripts/      sf-init/update/doctor/worktree/test/status
+  work/         project-owned: active/<slug>/ in-flight items, archive/<date>-<slug>/
+  learnings/    project-owned: one file per learning + an always-loaded INDEX.md
 project.yaml    the only config (project-owned)
-work/active/    one dir per in-flight item; archived to work/archive/<date>-<slug>/
 NEXT.md         backlog of one-line briefs
 ```
 

@@ -15,7 +15,7 @@ git add -A; git commit -q -m install
 export SPECFORGE_BASE_BRANCH=main
 SF="$T/.specforge/scripts"; SLUG=add-feature
 
-mkdir -p "$T/work/active/$SLUG"; echo "# Spec" > "$T/work/active/$SLUG/SPEC.md"
+mkdir -p "$T/.specforge/work/active/$SLUG"; echo "# Spec" > "$T/.specforge/work/active/$SLUG/SPEC.md"
 git add -A; git commit -q -m "$SLUG: plan"
 
 ( cd "$T" && bash "$SF/sf-worktree.sh" create "$SLUG" >/dev/null )
@@ -35,8 +35,8 @@ chk "merge refused w/o trailer" '! ( cd "$T" && bash "$SF/sf-worktree.sh" merge 
 ( cd "$WT" && git commit -q --allow-empty -m "$SLUG: verified" --trailer "Verified-by: verifier (impl)" )
 chk "merge succeeds w/ trailer" '( cd "$T" && bash "$SF/sf-worktree.sh" merge "$SLUG" >/dev/null 2>&1 )'
 chk "branch deleted after merge" '! git -C "$T" show-ref --verify --quiet refs/heads/feature/$SLUG'
-chk "work item archived" 'ls -d "$T"/work/archive/*-$SLUG >/dev/null 2>&1'
-chk "active dir cleared" '[ ! -d "$T/work/active/$SLUG" ]'
+chk "work item archived" 'ls -d "$T"/.specforge/work/archive/*-$SLUG >/dev/null 2>&1'
+chk "active dir cleared" '[ ! -d "$T/.specforge/work/active/$SLUG" ]'
 chk "feature.txt on main" '[ -f "$T/feature.txt" ]'
 
 [ "$FAIL" -eq 0 ] && echo "lifecycle.test.sh PASS" || { echo "lifecycle.test.sh FAIL"; exit 1; }

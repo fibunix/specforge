@@ -4,7 +4,7 @@
 # A work item is identified by a slug (e.g. "add-json-flag").
 #   branch   = feature/<slug>
 #   worktree = <root>/.worktrees/<slug>
-#   work dir = <root>/work/active/<slug>/  (archived to work/archive/<date>-<slug>/)
+#   work dir = <root>/.specforge/work/active/<slug>/  (archived to .specforge/work/archive/<date>-<slug>/)
 
 # Validate a slug: lowercase letters, digits, hyphens. Echoes the slug or fails.
 sf_validate_slug() {

@@ -39,12 +39,19 @@ else
   echo "  ✓ project.yaml exists"
 fi
 
-# 2. Seed work dirs + NEXT.md backlog.
-mkdir -p "$ROOT/work/active" "$ROOT/work/archive"
-touch "$ROOT/work/active/.gitkeep" "$ROOT/work/archive/.gitkeep"
+# 2. Seed work dirs + NEXT.md backlog (all under .specforge/, project-owned).
+mkdir -p "$ROOT/.specforge/work/active" "$ROOT/.specforge/work/archive"
+touch "$ROOT/.specforge/work/active/.gitkeep" "$ROOT/.specforge/work/archive/.gitkeep"
 if [ ! -f "$ROOT/NEXT.md" ]; then
   cp "$SF/canon/templates/NEXT.md" "$ROOT/NEXT.md"
   echo "  ✓ created NEXT.md backlog"
+fi
+
+# 2b. Seed the learnings store (one file per learning + an always-loaded index).
+mkdir -p "$ROOT/.specforge/learnings"
+if [ ! -f "$ROOT/.specforge/learnings/INDEX.md" ]; then
+  cp "$SF/canon/templates/LEARNINGS-INDEX.md" "$ROOT/.specforge/learnings/INDEX.md"
+  echo "  ✓ created learnings/INDEX.md"
 fi
 
 # 3. Determine IDE list.

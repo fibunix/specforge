@@ -9,8 +9,9 @@
 #   bash install.sh --source /path/to/specforge --dir /your/project --ide all
 #
 # Copies the framework (.specforge canon/profiles/lib/scripts + bin/sf) into the
-# target, then runs sf-init. Project-owned content (project.yaml, work/, NEXT.md,
-# and your own text in root AGENTS.md/CLAUDE.md outside the managed block) is
+# target, then runs sf-init. Project-owned content (project.yaml,
+# .specforge/work/, .specforge/learnings/, NEXT.md, and your own text in root
+# AGENTS.md/CLAUDE.md outside the managed block) is
 # never overwritten — so re-running on an existing project just pulls the latest
 # framework and re-projects it. That is the update path.
 

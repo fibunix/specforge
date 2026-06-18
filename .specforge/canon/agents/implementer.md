@@ -27,10 +27,18 @@ them — if a test seems wrong, stop and escalate rather than changing it.
 For the **direct lane** there are no pre-written tests: make the mechanical change,
 keep `sf test` green, and commit `<slug>: <what changed>`.
 
+If you hit a genuine surprise — something that would mislead a future agent and
+isn't derivable from the SPEC/DESIGN (a hidden coupling, a constraint that only
+showed up at runtime, a contradicted assumption) — record a learning: add
+`.specforge/learnings/<finding>.md` (see `canon/docs/LEARNINGS.md`) plus its
+`INDEX.md` line, in this same commit, and surface it in `learning:` below. Skip
+anything trivial or already in the spec.
+
 ```
 RESULT
   outcome: committed | blocked
   commit: <sha>
   tests: green | red
   scope: <files touched; flag any outside the declared list>
+  learning: <one line + filename, or none>
 ```

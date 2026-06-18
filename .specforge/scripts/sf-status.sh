@@ -31,7 +31,7 @@ fi
 echo ""
 echo "active work items:"
 found=0
-for d in "$ROOT"/work/active/*/; do
+for d in "$ROOT"/.specforge/work/active/*/; do
   [ -d "$d" ] || continue
   found=1
   slug="$(basename "$d")"
@@ -51,7 +51,7 @@ done
 echo ""
 echo "recently archived:"
 arch=0
-for d in "$ROOT"/work/archive/*/; do
+for d in "$ROOT"/.specforge/work/archive/*/; do
   [ -d "$d" ] || continue
   arch=1
   echo "  $(basename "$d")"

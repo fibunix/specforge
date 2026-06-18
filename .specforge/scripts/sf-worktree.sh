@@ -82,15 +82,15 @@ check_guardrail() {
 
 # Archive the work item on the base branch AFTER the ff-merge, then commit.
 archive_work_item() {
-  local active="$ROOT/work/active/$SLUG"
+  local active="$ROOT/.specforge/work/active/$SLUG"
   local stamp dest
-  [ -d "$active" ] || { echo "note: no work/active/$SLUG dir to archive"; return 0; }
+  [ -d "$active" ] || { echo "note: no .specforge/work/active/$SLUG dir to archive"; return 0; }
   stamp="$(git -C "$ROOT" show -s --format=%cs HEAD 2>/dev/null || echo undated)"
-  dest="work/archive/${stamp}-${SLUG}"
-  mkdir -p "$ROOT/work/archive"
-  git -C "$ROOT" mv "work/active/$SLUG" "$dest" 2>/dev/null \
+  dest=".specforge/work/archive/${stamp}-${SLUG}"
+  mkdir -p "$ROOT/.specforge/work/archive"
+  git -C "$ROOT" mv ".specforge/work/active/$SLUG" "$dest" 2>/dev/null \
     || mv "$active" "$ROOT/$dest"
-  git -C "$ROOT" add -A "work/active/$SLUG" "$dest" 2>/dev/null || true
+  git -C "$ROOT" add -A ".specforge/work/active/$SLUG" "$dest" 2>/dev/null || true
   git -C "$ROOT" commit -q -m "$SLUG: archive work item" 2>/dev/null || true
   echo "archived work item -> $dest/"
 }
