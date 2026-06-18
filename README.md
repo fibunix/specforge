@@ -22,13 +22,20 @@ verify each other's work. The rule above all: **no agent grades its own homework
 - **One guardrail.** `sf merge` refuses unless tests are green and HEAD carries a
   `Verified-by:` trailer. Everything reversible is unguarded.
 
-## Install
+## Install & update
 
-Curl one-liner (no clone needed), run from your project root:
+The **same** curl one-liner installs and updates — it's idempotent. Run it from
+your project root:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/fibunix/specforge/main/install.sh | bash -s -- --ide all
 ```
+
+Re-running it on an existing project re-fetches the latest framework and
+re-projects it, preserving everything you own — `project.yaml`, `work/`,
+`NEXT.md`, and your own text in `AGENTS.md`/`CLAUDE.md` outside the managed
+block. It prints `Updating` instead of `Installing` when it detects an existing
+install.
 
 Or from a local clone:
 
@@ -37,13 +44,9 @@ bash install.sh --source /path/to/specforge --dir /your/project --ide all
 # IDEs: claude-code, opencode, codex, pi, antigravity, all
 ```
 
-Upgrade in place (re-fetches the framework, preserves your content):
-
-```sh
-bin/sf update            # or: bin/sf upgrade
-```
-
-Override the source with `SPECFORGE_GIT_URL` / `SPECFORGE_VERSION` env vars.
+`bin/sf update` re-projects canon from the already-installed framework (no
+network); the curl line above is what pulls a newer framework. Override the
+source with `SPECFORGE_GIT_URL` / `SPECFORGE_VERSION` env vars.
 
 Then edit `project.yaml` (set `test_command`) and, in your editor, run `/sf
 "<request>"` to route work or `/sf-loop` to drive autonomously.

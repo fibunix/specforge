@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # install.sh - Bootstrap SpecForge into a target project.
 #
-# Curl one-liner (no local clone needed):
+# Curl one-liner — same command installs AND updates (idempotent):
 #   curl -fsSL https://raw.githubusercontent.com/fibunix/specforge/main/install.sh | bash
 #   curl -fsSL .../install.sh | bash -s -- --ide all
 #
@@ -9,8 +9,10 @@
 #   bash install.sh --source /path/to/specforge --dir /your/project --ide all
 #
 # Copies the framework (.specforge canon/profiles/lib/scripts + bin/sf) into the
-# target, then runs sf-init. Project-owned content (project.yaml, work/, NEXT.md)
-# is never overwritten.
+# target, then runs sf-init. Project-owned content (project.yaml, work/, NEXT.md,
+# and your own text in root AGENTS.md/CLAUDE.md outside the managed block) is
+# never overwritten — so re-running on an existing project just pulls the latest
+# framework and re-projects it. That is the update path.
 
 set -euo pipefail
 
@@ -66,7 +68,10 @@ resolve_source() {
 resolve_source
 DIR="$(cd "$DIR" && pwd)"
 
-echo "Installing SpecForge: $SOURCE -> $DIR"
+# Re-running over an existing install is the update path (sf-init is idempotent
+# and preserves project-owned content); relabel so the intent is clear.
+if [ -d "$DIR/.specforge/canon" ]; then VERB="Updating"; else VERB="Installing"; fi
+echo "$VERB SpecForge: $SOURCE -> $DIR"
 if [ "$SOURCE" = "$DIR" ]; then
   echo "  (source == target; running init in place)"
 else
@@ -92,4 +97,4 @@ INIT_ARGS=""
 # shellcheck disable=SC2086
 ( cd "$DIR" && bash "$DIR/.specforge/scripts/sf-init.sh" $INIT_ARGS )
 
-echo "Done. Run 'bin/sf status' or use /sf in your editor."
+echo "$VERB done. Run 'bin/sf status' or use /sf in your editor."
