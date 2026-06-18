@@ -8,6 +8,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/common.sh"
 # shellcheck source=lib/git.sh
 source "$SCRIPT_DIR/lib/git.sh"
+# shellcheck source=lib/review.sh
+source "$SCRIPT_DIR/lib/review.sh"
 
 ROOT="$(sf_root)"
 ACTION="${1:-}"
@@ -61,6 +63,8 @@ ensure_clean_or_commit() {
 }
 
 merge_worktree() {
+  local head
+
   [ -d "$WT" ] || sf_die "no worktree at $WT"
   [ -n "$BASE_BRANCH" ] || sf_die "could not find base branch. Set SPECFORGE_BASE_BRANCH or create main/master/trunk/develop."
 
@@ -79,6 +83,11 @@ merge_worktree() {
     git merge-base --is-ancestor "$BASE_BRANCH" "$BRANCH" || sf_die "dry run failed: $BRANCH cannot fast-forward into $BASE_BRANCH"
     echo "dry run passed: $BRANCH can fast-forward into $BASE_BRANCH"
     return 0
+  fi
+
+  if [[ "$SPEC_ID" == TASK-* ]]; then
+    head="$(git -C "$ROOT" rev-parse "$BRANCH")"
+    sf_require_pass_receipt "$ROOT" "$SPEC_ID" task "$head" sf-task-reviewer
   fi
 
   git merge --ff-only "$BRANCH" >/dev/null 2>&1 || sf_die "fast-forward merge into $BASE_BRANCH failed; resolve manually in $WT"

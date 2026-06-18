@@ -27,7 +27,7 @@ assert_not_contains() {
 }
 
 canonical_commands=(sf-plan sf-test sf-ship sf-review sf-finalize sf-status sf-loop sf-goal sf-task)
-internal_skills=(sf-auto-review sf-plan-reviewer sf-test-reviewer sf-implementation-reviewer sf-task-reviewer)
+internal_skills=(sf-plan-reviewer sf-test-reviewer sf-implementation-reviewer sf-task-reviewer)
 legacy_commands=(sf-align sf-design sf-build sf-trace sf-next)
 primary_docs=(README.md AGENTS.md .specforge/docs/FLOW.md)
 
@@ -93,6 +93,10 @@ assert_not_contains .specforge/skills/sf-status/SKILL.md "sf-snapshot"
 
 assert_contains .specforge/skills/sf-loop/SKILL.md "DESIGN"
 assert_contains .specforge/skills/sf-loop/SKILL.md "VERDICT: PASS"
+assert_contains .specforge/docs/REVIEW-CONTRACT.md "Review Receipt Contract"
+assert_contains .specforge/docs/REVIEW-CONTRACT.md "sf-test-reviewer"
+assert_contains .specforge/docs/REVIEW-CONTRACT.md "sf-implementation-reviewer"
+assert_contains .specforge/docs/REVIEW-CONTRACT.md "sf-task-reviewer"
 assert_contains .specforge/skills/sf-goal/SKILL.md "thin public wrapper"
 assert_contains .specforge/skills/sf-task/SKILL.md "independent reviewer"
 

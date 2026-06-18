@@ -110,8 +110,8 @@ chmod +x .specforge/adapters/<my-ide>/adapt.sh
   Manual side-effect commands (`sf-ship`, `sf-finalize`, `sf-test`) use
   `disable-model-invocation: true`; explicit autonomous commands (`sf-loop`,
   `sf-goal`) may advance only after independent reviewer PASS receipts.
-- Internal reviewer skills (`sf-auto-review`, `sf-test-reviewer`,
-  `sf-implementation-reviewer`, `sf-plan-reviewer`, `sf-task-reviewer`) are
+- Internal reviewer skills (`sf-test-reviewer`, `sf-implementation-reviewer`,
+  `sf-plan-reviewer`, `sf-task-reviewer`) are
   installed as skills for sub-agents but do not need slash-command wrappers.
 - On re-run, the adapter removes any stale `sf-*.md` symlinks from `.claude/commands/` left by older installs.
 - Reference: https://docs.anthropic.com/en/docs/claude-code/memory

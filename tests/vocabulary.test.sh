@@ -79,30 +79,28 @@ do
   grep -q "$phrase" "$plan_skill" || fail "sf-plan skill lost wave phrase: $phrase"
 done
 
-# ── Auto-review gate contract ─────────────────────────────────────────────────
-# sf-loop's auto-review gate and sf-auto-review's VERDICT format are the
-# machine-readable contracts between the loop and the critic sub-agent.
-# If these phrases change, the loop can no longer parse the critic's output.
+# ── Reviewer gate contract ────────────────────────────────────────────────────
+# sf-loop points at the canonical receipt schema. Scripts enforce this schema;
+# if these phrases disappear, the autonomous gate can drift back to prose-only
+# receipt checks.
 loop_skill="$ROOT/.specforge/skills/sf-loop/SKILL.md"
 for phrase in \
-  '## Auto-review gate' \
+  '## Reviewer Gates' \
+  'REVIEW-CONTRACT[.]md' \
+  'VERDICT: PASS'
+do
+  grep -q "$phrase" "$loop_skill" || fail "sf-loop skill lost reviewer phrase: $phrase"
+done
+
+review_contract="$ROOT/.specforge/docs/REVIEW-CONTRACT.md"
+for phrase in \
+  'sf-test-reviewer' \
+  'sf-implementation-reviewer' \
+  'sf-task-reviewer' \
   'VERDICT: PASS' \
   'VERDICT: FAIL'
 do
-  if [ "$phrase" = "## Auto-review gate" ]; then
-    grep -q "## Reviewer Gates" "$loop_skill" || fail "sf-loop skill lost reviewer gate heading"
-  else
-    grep -q "$phrase" "$loop_skill" || fail "sf-loop skill lost auto-review phrase: $phrase"
-  fi
-done
-
-auto_review_skill="$ROOT/.specforge/skills/sf-auto-review/SKILL.md"
-for phrase in \
-  'VERDICT: PASS' \
-  'VERDICT: FAIL' \
-  'assume something is wrong and prove it'
-do
-  grep -q "$phrase" "$auto_review_skill" || fail "sf-auto-review skill lost critic phrase: $phrase"
+  grep -q "$phrase" "$review_contract" || fail "review contract lost phrase: $phrase"
 done
 
 if [ "$failures" -gt 0 ]; then

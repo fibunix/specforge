@@ -215,6 +215,8 @@ fi
 PROJECT="$TMP/autonomous"
 setup_good_branch "$PROJECT"
 HEAD_COMMIT="$(git -C "$PROJECT" rev-parse HEAD)"
+RED_COMMIT="$(git -C "$PROJECT" rev-parse HEAD^)"
+BASE_COMMIT="$(git -C "$PROJECT" merge-base main HEAD)"
 assert_fails_with "autonomous missing receipts" 'PASS receipt' bash -c "cd '$PROJECT' && bash .specforge/scripts/sf-finalize.sh SPEC-001 --autonomous"
 mkdir -p "$PROJECT/.specforge/reviews/SPEC-001"
 cat > "$PROJECT/.specforge/reviews/SPEC-001/tests-red-red.md" <<'EOF'
@@ -222,7 +224,7 @@ spec_id: SPEC-001
 phase: tests-red
 base: base
 head: red
-reviewer: test
+reviewer: sf-test-reviewer
 verdict: PASS
 commands run:
 - bash .specforge/scripts/sf-test.sh
@@ -234,7 +236,7 @@ spec_id: SPEC-001
 phase: done
 base: base
 head: stale
-reviewer: test
+reviewer: sf-implementation-reviewer
 verdict: PASS
 commands run:
 - bash .specforge/scripts/sf-verify-build.sh SPEC-001
@@ -242,10 +244,35 @@ findings: none
 VERDICT: PASS
 EOF
 assert_fails_with "autonomous stale receipt" 'PASS receipt' bash -c "cd '$PROJECT' && bash .specforge/scripts/sf-finalize.sh SPEC-001 --autonomous"
+cat > "$PROJECT/.specforge/reviews/SPEC-001/tests-red-$RED_COMMIT.md" <<EOF
+spec_id: SPEC-001
+phase: tests-red
+base: $BASE_COMMIT
+head: stale
+reviewer: sf-test-reviewer
+verdict: PASS
+commands run:
+- bash .specforge/scripts/sf-test.sh
+findings: none
+VERDICT: PASS
+EOF
+assert_fails_with "autonomous red receipt internal head" 'head does not match' bash -c "cd '$PROJECT' && bash .specforge/scripts/sf-finalize.sh SPEC-001 --autonomous"
+cat > "$PROJECT/.specforge/reviews/SPEC-001/tests-red-$RED_COMMIT.md" <<EOF
+spec_id: SPEC-001
+phase: tests-red
+base: $BASE_COMMIT
+head: $RED_COMMIT
+reviewer: sf-test-reviewer
+verdict: PASS
+commands run:
+- bash .specforge/scripts/sf-test.sh
+findings: none
+VERDICT: PASS
+EOF
 cat > "$PROJECT/.specforge/reviews/SPEC-001/done-$HEAD_COMMIT.md" <<EOF
 spec_id: SPEC-001
 phase: done
-base: base
+base: $BASE_COMMIT
 head: $HEAD_COMMIT
 reviewer: test
 verdict: PASS
@@ -254,8 +281,83 @@ commands run:
 findings: none
 VERDICT: PASS
 EOF
+assert_fails_with "autonomous done receipt reviewer" 'reviewer must be sf-implementation-reviewer' bash -c "cd '$PROJECT' && bash .specforge/scripts/sf-finalize.sh SPEC-001 --autonomous"
+cat > "$PROJECT/.specforge/reviews/SPEC-001/done-$HEAD_COMMIT.md" <<EOF
+spec_id: SPEC-001
+phase: done
+base: $BASE_COMMIT
+head: $HEAD_COMMIT
+reviewer: sf-implementation-reviewer
+verdict: PASS
+commands run:
+- bash .specforge/scripts/sf-verify-build.sh SPEC-001
+findings: none
+VERDICT: PASS
+EOF
 (cd "$PROJECT" && bash .specforge/scripts/sf-finalize.sh SPEC-001 --autonomous >/dev/null)
 [ "$(git -C "$PROJECT" symbolic-ref --short HEAD)" = "main" ] || fail "autonomous finalize should land on main"
+
+# Task worktree merge requires a current independent task-review receipt.
+PROJECT="$TMP/task-review"
+install_project "$PROJECT"
+write_config "$PROJECT"
+cat > "$PROJECT/.specforge/tasks/TASK-001-demo.md" <<'EOF'
+# TASK-001: Demo
+
+**State:** open
+**Created:** 2026-06-17
+
+## What
+Create a demo task output.
+
+## Why
+Exercise task review gates.
+
+## Changes
+- [ ] task-output.txt
+EOF
+git_p "$PROJECT" add -A
+git_p "$PROJECT" commit -qm "task setup"
+(cd "$PROJECT" && bash .specforge/scripts/sf-worktree.sh create TASK-001 >/dev/null)
+WT="$PROJECT/.worktrees/TASK-001"
+cat > "$WT/task-output.txt" <<'EOF'
+done
+EOF
+cat > "$WT/.specforge/tasks/TASK-001-demo.md" <<'EOF'
+# TASK-001: Demo
+
+**State:** done
+**Created:** 2026-06-17
+
+## What
+Create a demo task output.
+
+## Why
+Exercise task review gates.
+
+## Changes
+- [x] task-output.txt
+EOF
+git -C "$WT" -c user.name=sf-test -c user.email=sf@test add -A
+git -C "$WT" -c user.name=sf-test -c user.email=sf@test commit -qm "TASK-001: demo"
+assert_fails_with "task merge missing receipt" 'task gate requires PASS receipt' bash -c "cd '$PROJECT' && bash .specforge/scripts/sf-worktree.sh merge TASK-001"
+TASK_HEAD="$(git -C "$PROJECT" rev-parse feature/TASK-001)"
+TASK_BASE="$(git -C "$PROJECT" merge-base main feature/TASK-001)"
+mkdir -p "$PROJECT/.specforge/reviews/TASK-001"
+cat > "$PROJECT/.specforge/reviews/TASK-001/task-$TASK_HEAD.md" <<EOF
+spec_id: TASK-001
+phase: task
+base: $TASK_BASE
+head: $TASK_HEAD
+reviewer: sf-task-reviewer
+verdict: PASS
+commands run:
+- bash .specforge/scripts/sf-test.sh
+findings: none
+VERDICT: PASS
+EOF
+(cd "$PROJECT" && bash .specforge/scripts/sf-worktree.sh merge TASK-001 >/dev/null)
+[ -f "$PROJECT/task-output.txt" ] || fail "task merge should land reviewed task output"
 
 # Rebase finalize must rerun full verify, not only tests.
 grep -q 'sf-verify-build.sh "$SPEC"' "$ROOT/.specforge/scripts/sf-finalize.sh" \

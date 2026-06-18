@@ -22,7 +22,7 @@ is the human's instruction to write reviewable red tests.
    `State: tests-red`, and the red-tests commit. Stop there. Do not implement.
 
 **Handoff:**
-- Called from `/sf-loop`: the auto-review gate runs automatically after this
+- Called from `/sf-loop`: the reviewer gate runs automatically after this
   phase — do not tell the human to review.
 - Called directly by the human: tell the human to run `/sf-review SPEC-ID`
   to inspect the committed tests.

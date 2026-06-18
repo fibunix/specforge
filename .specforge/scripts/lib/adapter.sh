@@ -20,6 +20,28 @@ sf_safe_link() {
   fi
 }
 
+sf_remove_stale_specforge_links() {
+  local dir="$1"
+  local managed_fragment="$2"
+  local label="$3"
+  local link target resolved
+
+  [ -d "$dir" ] || return 0
+  for link in "$dir"/*; do
+    [ -L "$link" ] || continue
+    target="$(readlink "$link" 2>/dev/null || true)"
+    case "$target" in
+      *"$managed_fragment"*)
+        resolved="$(cd "$(dirname "$link")" && cd "$(dirname "$target")" 2>/dev/null && pwd)/$(basename "$target")" || resolved=""
+        if [ -z "$resolved" ] || [ ! -e "$resolved" ]; then
+          rm "$link"
+          echo "  ✓ removed stale $label symlink $(basename "$link")"
+        fi
+        ;;
+    esac
+  done
+}
+
 sf_adapter_list_from_arg_or_install() {
   local root="$1"
   local ide_arg="${2:-}"

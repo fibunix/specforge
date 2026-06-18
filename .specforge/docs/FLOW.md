@@ -133,8 +133,9 @@ Manual gate: the human approves the red tests before implementation. Running
 
 Autonomous gate: an independent test reviewer validates coverage, real
 assertions, scope, and expected red failure, then writes
-`.specforge/reviews/<SPEC-ID>/tests-red-<commit>.md`. Missing receipt, stale
-head, or any verdict other than exact `VERDICT: PASS` stops the loop.
+the receipt defined in `.specforge/docs/REVIEW-CONTRACT.md` for the exact
+tests-red commit. Missing receipt, stale head, wrong reviewer, schema failure,
+or any verdict other than exact final `VERDICT: PASS` stops the loop.
 
 ### Ship
 
@@ -166,8 +167,9 @@ Manual gate: the human approves the final diff before finalization. Running
 
 Autonomous gate: an independent implementation reviewer validates final diff,
 scope, requirements, green tests, and undeclared files, then writes
-`.specforge/reviews/<SPEC-ID>/done-<commit>.md`. Missing receipt, stale head,
-or any verdict other than exact `VERDICT: PASS` stops the loop.
+the receipt defined in `.specforge/docs/REVIEW-CONTRACT.md` for the current
+done branch head. Missing receipt, stale head, wrong reviewer, schema failure,
+or any verdict other than exact final `VERDICT: PASS` stops the loop.
 
 ### Finalize
 
@@ -233,9 +235,9 @@ Command:
 The executor classifies the request, creates `.specforge/tasks/TASK-NNN-<slug>.md`,
 makes the change in an isolated `feature/TASK-NNN` worktree, runs tests, and
 commits. An independent task reviewer then validates the mechanical diff and
-writes `.specforge/reviews/<TASK-ID>/task-<commit>.md`. Only a current exact
-`VERDICT: PASS` lets the coordinator merge. No human approval is required, but
-tasks do not self-validate.
+writes the receipt defined in `.specforge/docs/REVIEW-CONTRACT.md`. The merge
+script rejects missing, stale, wrong-reviewer, or non-PASS task receipts. No
+human approval is required, but tasks do not self-validate.
 
 If a request doesn't meet the task criteria (new behavior, design decisions needed, API changes), the executor stops and tells you to use `/sf-plan` instead.
 

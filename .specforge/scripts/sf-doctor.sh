@@ -116,7 +116,7 @@ check_scripts() {
     require_executable "$script" "script $script_name"
   done
 
-  for lib in common.sh config.sh git.sh spec.sh adapter.sh managed-block.sh; do
+  for lib in common.sh config.sh git.sh spec.sh review.sh adapter.sh managed-block.sh; do
     require_file "$SF/scripts/lib/$lib" "script helper lib/$lib"
   done
 }

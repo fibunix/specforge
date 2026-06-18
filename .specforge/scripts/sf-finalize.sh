@@ -8,6 +8,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/common.sh"
 # shellcheck source=lib/git.sh
 source "$SCRIPT_DIR/lib/git.sh"
+# shellcheck source=lib/spec.sh
+source "$SCRIPT_DIR/lib/spec.sh"
+# shellcheck source=lib/review.sh
+source "$SCRIPT_DIR/lib/review.sh"
 
 ROOT="$(sf_root)"
 SPEC="${1:-}"
@@ -43,23 +47,15 @@ PARALLEL_CHECKOUT="$(sf_worktree_for_branch "$ROOT" "$BRANCH" 2>/dev/null || tru
 require_autonomous_receipts() {
   local spec_id="$1"
   local branch="$2"
-  local head tests_receipt done_receipt receipt_dir
+  local head red_head
 
   [ "$AUTONOMOUS" = true ] || return 0
   head="$(git -C "$ROOT" rev-parse "$branch")"
-  receipt_dir="$ROOT/.specforge/reviews/$spec_id"
-  done_receipt="$receipt_dir/done-$head.md"
-  [ -f "$done_receipt" ] || sf_die "autonomous finalize requires PASS receipt: .specforge/reviews/$spec_id/done-$head.md"
-  grep -q '^phase:[[:space:]]*done[[:space:]]*$' "$done_receipt" || sf_die "autonomous receipt has wrong phase: $done_receipt"
-  grep -q '^head:[[:space:]]*'"$head"'[[:space:]]*$' "$done_receipt" || sf_die "autonomous receipt head does not match $branch: $done_receipt"
-  grep -q '^verdict:[[:space:]]*PASS[[:space:]]*$' "$done_receipt" || sf_die "autonomous receipt must have verdict: PASS: $done_receipt"
-  grep -q '^VERDICT:[[:space:]]*PASS[[:space:]]*$' "$done_receipt" || sf_die "autonomous receipt must contain exact VERDICT: PASS: $done_receipt"
+  red_head="$(sf_tests_red_commit_for_branch "$ROOT" "$branch" "$spec_id" 2>/dev/null || true)"
+  [ -n "$red_head" ] || sf_die "autonomous finalize requires a committed State: tests-red history entry for $spec_id"
 
-  tests_receipt="$(find "$receipt_dir" -maxdepth 1 -type f -name 'tests-red-*.md' 2>/dev/null | head -n 1 || true)"
-  [ -n "$tests_receipt" ] || sf_die "autonomous finalize requires a tests-red PASS receipt in .specforge/reviews/$spec_id/"
-  grep -q '^phase:[[:space:]]*tests-red[[:space:]]*$' "$tests_receipt" || sf_die "autonomous tests receipt has wrong phase: $tests_receipt"
-  grep -q '^verdict:[[:space:]]*PASS[[:space:]]*$' "$tests_receipt" || sf_die "autonomous tests receipt must have verdict: PASS: $tests_receipt"
-  grep -q '^VERDICT:[[:space:]]*PASS[[:space:]]*$' "$tests_receipt" || sf_die "autonomous tests receipt must contain exact VERDICT: PASS: $tests_receipt"
+  sf_require_pass_receipt "$ROOT" "$spec_id" tests-red "$red_head" sf-test-reviewer
+  sf_require_pass_receipt "$ROOT" "$spec_id" done "$head" sf-implementation-reviewer
 }
 
 # Rebase a branch living in a worktree onto the base branch, rerun

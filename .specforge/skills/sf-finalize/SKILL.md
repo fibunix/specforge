@@ -34,14 +34,16 @@ Report that no merge was performed.
 ## Autonomous
 
 If called from `/sf-loop` or `/sf-goal`, do not ask the human for final-diff
-approval. The script enforces current PASS receipts:
+approval. The script enforces the receipt schema in
+`.specforge/docs/REVIEW-CONTRACT.md`, including the exact tests-red commit and
+current done branch head:
 
 ```bash
 bash .specforge/scripts/sf-finalize.sh SPEC-ID --autonomous
 ```
 
-If the receipt is missing, stale, or lacks exact `VERDICT: PASS`, stop and
-report the script error.
+If a receipt is missing, stale, has the wrong reviewer/commit, or lacks exact
+final `VERDICT: PASS`, stop and report the script error.
 
 ## Rules
 

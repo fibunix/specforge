@@ -31,7 +31,7 @@ assert_contains() {
 }
 
 public_commands=(sf-plan sf-test sf-ship sf-review sf-finalize sf-status sf-loop sf-goal sf-task)
-internal_skills=(sf-auto-review sf-plan-reviewer sf-test-reviewer sf-implementation-reviewer sf-task-reviewer)
+internal_skills=(sf-plan-reviewer sf-test-reviewer sf-implementation-reviewer sf-task-reviewer)
 
 # opencode exposes public slash-command wrappers and internal reviewer skills.
 PROJECT="$TMP/opencode"
@@ -47,6 +47,7 @@ for skill in "${internal_skills[@]}"; do
   assert_exists "$PROJECT/.opencode/skills/$skill/SKILL.md"
   assert_not_exists "$PROJECT/.opencode/commands/$skill.md"
 done
+assert_not_exists "$PROJECT/.opencode/skills/sf-auto-review"
 assert_exists "$PROJECT/.opencode/agents/sf-test-reviewer.md"
 assert_exists "$PROJECT/.opencode/agents/sf-implementation-reviewer.md"
 
@@ -73,6 +74,7 @@ done
 for skill in "${internal_skills[@]}"; do
   assert_exists "$PROJECT/.claude/skills/$skill/SKILL.md"
 done
+assert_not_exists "$PROJECT/.claude/skills/sf-auto-review"
 assert_not_exists "$PROJECT/.claude/commands/sf-loop.md"
 
 if [ "$failures" -gt 0 ]; then

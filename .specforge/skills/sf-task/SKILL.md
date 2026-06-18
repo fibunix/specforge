@@ -27,9 +27,10 @@ You are the **SpecForge Executor**. Read `.specforge/agents/executor.md` for you
 2. If task-sized: generate a TASK-ID, create the task file, and execute.
 3. If task-sized: the executor commits the task branch and stops.
 4. Spawn an independent reviewer with `.specforge/skills/sf-task-reviewer/SKILL.md`.
-5. Require a current PASS receipt under `.specforge/reviews/<TASK-ID>/task-<commit>.md`.
-6. Only after that PASS, run `bash .specforge/scripts/sf-worktree.sh merge <TASK-ID>`.
+5. Require the current task PASS receipt defined in `.specforge/docs/REVIEW-CONTRACT.md`.
+6. Only after that PASS, run `bash .specforge/scripts/sf-worktree.sh merge <TASK-ID>`; the merge script enforces the receipt again.
 7. If spec-sized: explain why and tell the user to run `/sf-plan`.
 
 No human is asked to approve at any point. The task no longer self-validates:
-merge only after the independent reviewer writes exact `VERDICT: PASS`.
+merge only after the independent reviewer writes a script-valid exact
+`VERDICT: PASS` receipt for the current task branch head.

@@ -97,6 +97,7 @@ rm -rf "$PROJECT/.specforge/root"
 rm -rf "$PROJECT/.specforge/skills/sf-goal"
 rm -rf "$PROJECT/.specforge/skills/sf-test-reviewer"
 rm -f "$PROJECT/.specforge/adapters/opencode/commands/sf-goal.md"
+ln -s "../../.specforge/skills/sf-auto-review" "$PROJECT/.claude/skills/sf-auto-review"
 bash "$ROOT/install.sh" --source "$ROOT" --dir "$PROJECT" --update --dry-run --ide claude-code >/dev/null
 
 after_dry_owned="$(checksum_files "${owned_files[@]}")"
@@ -108,6 +109,9 @@ if [ -e "$PROJECT/.specforge/root" ]; then
 fi
 if [ -e "$PROJECT/.specforge/skills/sf-goal" ]; then
   fail "dry-run should not restore .specforge/skills/sf-goal"
+fi
+if [ ! -L "$PROJECT/.claude/skills/sf-auto-review" ]; then
+  fail "dry-run should not remove stale Claude Code skill symlink"
 fi
 
 (cd "$CALLER" && bash "$ROOT/install.sh" --source "$ROOT" --dir "$PROJECT" --update --ide claude-code >/dev/null)
@@ -141,6 +145,7 @@ assert_contains "$PROJECT/CLAUDE.md" "/sf-loop"
 assert_contains "$PROJECT/CLAUDE.md" "/sf-goal"
 [ -e "$PROJECT/.claude/skills/sf-goal" ] || fail "update should link Claude Code sf-goal skill"
 [ -e "$PROJECT/.claude/skills/sf-test-reviewer" ] || fail "update should link Claude Code internal reviewer skill"
+[ ! -L "$PROJECT/.claude/skills/sf-auto-review" ] || fail "update should remove stale Claude Code sf-auto-review skill"
 
 begin_count="$(grep -Fxc "<!-- BEGIN SPECFORGE MANAGED BLOCK v1 -->" "$PROJECT/AGENTS.md")"
 end_count="$(grep -Fxc "<!-- END SPECFORGE MANAGED BLOCK v1 -->" "$PROJECT/AGENTS.md")"

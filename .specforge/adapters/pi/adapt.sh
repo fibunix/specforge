@@ -47,6 +47,7 @@ fi
 #    Pi discovers skills from .pi/skills/*/SKILL.md - invoked via /skill:name
 if [ -d "$SF/skills" ]; then
   mkdir -p "$ROOT/.pi/skills"
+  sf_remove_stale_specforge_links "$ROOT/.pi/skills" ".specforge/skills/" "skill"
   for skill_dir in "$SF"/skills/*/; do
     [ -d "$skill_dir" ] || continue
     skill_name=$(basename "$skill_dir")

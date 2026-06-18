@@ -67,12 +67,12 @@ independent reviewer sub-agent before proceeding:
 3. For tasks, launch a fresh sub-agent using
    `.specforge/skills/sf-task-reviewer/SKILL.md`.
 
-Each reviewer must write a receipt under
-`.specforge/reviews/<SPEC-ID>/<phase>-<commit>.md` with `spec_id`, `phase`,
-`base`, `head`, `reviewer`, `verdict`, commands run, concise findings, and an
-exact final line `VERDICT: PASS` or `VERDICT: FAIL`.
+Each reviewer must write the receipt defined in
+`.specforge/docs/REVIEW-CONTRACT.md`. The scripts validate the exact phase,
+reviewer name, base commit, reviewed head, command evidence, and final
+`VERDICT:` line.
 
-Read only the receipt and the final `VERDICT:` line:
+Read only the script-validated receipt and final `VERDICT:` line:
 - `VERDICT: PASS` → log: `Review passed SPEC-NNN [phase] — continuing` and
   proceed immediately.
 - Anything else — reviewer cannot run, cannot write a receipt, receipt `head`
