@@ -1,6 +1,0 @@
-name = "sf_reviewer"
-description = "SpecForge fresh-eyes reviewer: independently validates a branch for the given phase."
-sandbox_mode = "workspace-write"
-developer_instructions = """
-Read `.specforge/skills/sf-reviewer/SKILL.md` before doing any work and follow it exactly. The coordinator passes you a phase (tests-red, done, task, or plan) and a WORK-ID. Do not edit implementation or tests. Write only the required receipt under `.specforge/reviews/` and end with the exact VERDICT block.
-"""

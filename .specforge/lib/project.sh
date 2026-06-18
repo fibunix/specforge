@@ -39,10 +39,23 @@ sf_project_ide() {
   echo "Projecting canon -> ${PROFILE_NAME:-$ide}"
 
   # 1. Root rules (managed block, preserves user content around it).
-  local rf
+  #    Single source of truth: inject the block into whichever listed root file
+  #    the project ALREADY has, so we never drop a duplicate copy next to the
+  #    user's own file. Only when none exist do we create the primary (first
+  #    listed); a profile may then point the secondary names at it via symlink
+  #    (PROFILE_RULES_SYMLINK, step 2) — e.g. real AGENTS.md + CLAUDE.md -> it.
+  local rf primary="" existing="" tmpl="$sf/canon/root/SPECFORGE.md"
   for rf in $PROFILE_ROOT_RULES; do
-    sf_update_managed_block "$root/$rf" "$sf/canon/root/SPECFORGE.md" "$dry" "$rf"
+    [ -z "$primary" ] && primary="$rf"
+    if [ -f "$root/$rf" ] && [ ! -L "$root/$rf" ]; then existing="$existing $rf"; fi
   done
+  if [ -n "$existing" ]; then
+    for rf in $existing; do
+      sf_update_managed_block "$root/$rf" "$tmpl" "$dry" "$rf"
+    done
+  elif [ -n "$primary" ]; then
+    sf_update_managed_block "$root/$primary" "$tmpl" "$dry" "$primary"
+  fi
 
   # 2. Rules symlink (e.g. .opencode/AGENTS.md -> ../AGENTS.md).
   if [ -n "$PROFILE_RULES_SYMLINK" ]; then
