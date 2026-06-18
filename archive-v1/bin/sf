@@ -1,0 +1,275 @@
+#!/usr/bin/env bash
+# sf — SpecForge CLI
+#
+# Usage:
+#   sf init [--ide <ide>]                Bootstrap SpecForge in current project
+#   sf update [--dry-run]                Update framework files and managed instructions
+#   sf doctor                            Check install/config/adapter health
+#   sf status                            Dump plan-artifact status and per-SPEC facts
+#   sf facts                             Alias for 'sf status'
+#   sf test [PROJECT-ID]                 Run configured test command(s)
+#   sf verify SPEC-ID                    Verify a build branch before review/merge
+#   sf finalize SPEC-ID [--dry-run]      Verify, merge, and clean up a completed spec
+#   sf finalize SPEC-ID --rebase         Rebase onto base branch then ff-merge
+#   sf finalize SPEC-ID --autonomous     Require reviewer PASS receipts before merge
+#   sf iteration abandon                 Abandon the active iteration and archive it
+#   sf queue "requirement text"          Append a bullet to NEXT.md (creates it if absent)
+#   sf worktree create SPEC-ID           Create an isolated worktree for a spec
+#   sf worktree merge SPEC-ID            Merge a spec worktree into the base branch
+#   sf task list                         List all tasks and their state
+#   sf lint                              Validate SPEC quality
+#   sf help                              Show this help
+#
+# This script finds .specforge/ by walking up from CWD.
+# If not found, 'sf init' will download and install SpecForge.
+
+set -euo pipefail
+
+BOLD='\033[1m'
+GREEN='\033[0;32m'
+RESET='\033[0m'
+
+# ── Find .specforge/ by walking up ──
+find_specforge() {
+  local dir="${1:-$(pwd)}"
+  while [ "$dir" != "/" ]; do
+    if [ -f "$dir/.specforge/scripts/sf-init.sh" ]; then
+      echo "$dir/.specforge"
+      return 0
+    fi
+    dir="$(cd "$dir/.." && pwd)"
+  done
+  return 1
+}
+
+# ── Require .specforge/ or die ──
+require_sf() {
+  SF="$(find_specforge "$(pwd)")" || {
+    echo "error: .specforge/ not found. Run: sf init" >&2
+    exit 1
+  }
+  ROOT="$(dirname "$SF")"
+}
+
+# ── Show help ──
+show_help() {
+  cat <<'HELP'
+sf — SpecForge CLI
+
+Usage:
+  sf init [--ide <ide>]                Bootstrap SpecForge in current project
+  sf update [--dry-run]                Update framework files and managed instructions
+  sf doctor                            Check install/config/adapter health
+  sf status                            Dump plan-artifact status and per-SPEC facts
+  sf facts                             Alias for 'sf status'
+  sf test [PROJECT-ID]                 Run configured test command(s)
+  sf verify SPEC-ID                    Verify a build branch before review/merge
+  sf finalize SPEC-ID                  Verify, merge, and clean up a completed spec
+  sf finalize SPEC-ID --dry-run        Verify and check merge without changing state
+  sf finalize SPEC-ID --rebase         Rebase onto base branch, rerun verify, then ff-merge
+  sf finalize SPEC-ID --autonomous     Require reviewer PASS receipts before merge
+  sf iteration abandon                 Abandon the active iteration and archive it
+  sf queue "requirement text"          Append a bullet to NEXT.md (creates it if absent)
+  sf worktree create SPEC-ID           Create an isolated worktree for a spec
+  sf worktree merge SPEC-ID            Merge a spec worktree into the base branch
+  sf worktree merge SPEC-ID --dry-run  Check whether a worktree can fast-forward merge
+  sf task list                         List all tasks and their state
+  sf lint                              Validate SPEC quality
+  sf help                              Show this help
+
+SPEC-ID accepts .specforge/specs/SPEC-ID.md or .specforge/specs/SPEC-ID-<slug>.md.
+Branches use the stable SPEC ID, for example feature/SPEC-009.
+
+IDE options for 'sf init':
+  opencode, claude-code, codex, pi, antigravity, all
+
+Use the slash commands in your editor for the full workflow:
+  /sf "..."        Smart router: classify a request and pick the lane
+  /sf-plan         Full lane: align, design, and approve SPECS
+  /sf-quickspec    Quick lane: one self-contained SPEC, single review
+  /sf-test ID      Write red tests, commit, and stop for review
+  /sf-review ID    Inspect committed tests or implementation changes
+  /sf-ship ID      Implement after test approval
+  /sf-finalize ID  Verify, merge, and clean up after review
+  /sf-loop         Autonomously advance approved specs after reviewer PASS
+  /sf-task "..."   Execute a mechanical task with independent review
+  /sf-status       Facts from 'sf status' plus the agent's next-action reasoning
+
+Wave planning, review judgment, and requirement traceability are agent-side:
+run /sf-plan, /sf-review, /sf-loop, or ask the agent — scripts enforce, agents interpret.
+HELP
+}
+
+# ── Handle no arguments ──
+if [ $# -eq 0 ]; then
+  show_help
+  exit 0
+fi
+
+COMMAND="$1"
+shift
+
+case "$COMMAND" in
+
+  # ── init: install or reinitialize ──
+  init)
+    SF="$(find_specforge "$(pwd)" 2>/dev/null || true)"
+
+    if [ -n "$SF" ]; then
+      echo -e "${GREEN}SpecForge already installed.${RESET} Reinitializing..."
+      ROOT="$(dirname "$SF")"
+      bash "$SF/scripts/sf-init.sh" "$@"
+    else
+      SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+      REPO_DIR="$(dirname "$SELF_DIR")"
+
+      if [ -f "$REPO_DIR/install.sh" ]; then
+        bash "$REPO_DIR/install.sh" --source "$REPO_DIR" --dir "$(pwd)" "$@"
+      else
+        TEMP_DIR="$(mktemp -d)"
+        cleanup() { rm -rf "$TEMP_DIR"; }
+        trap cleanup EXIT
+
+        SPECFORGE_REPO="${SPECFORGE_REPO:-}"
+        if [ -n "$SPECFORGE_REPO" ] && [ -f "$SPECFORGE_REPO/install.sh" ]; then
+          bash "$SPECFORGE_REPO/install.sh" --source "$SPECFORGE_REPO" --dir "$(pwd)" "$@"
+        else
+          echo -e "${BOLD}Downloading SpecForge...${RESET}"
+          if command -v git &>/dev/null; then
+            git clone --depth 1 https://github.com/anomalyco/specforge.git "$TEMP_DIR/specforge" 2>/dev/null || {
+              echo "Could not download SpecForge from GitHub." >&2
+              echo "Clone the repo and run: bash /path/to/specforge/install.sh" >&2
+              exit 1
+            }
+            bash "$TEMP_DIR/specforge/install.sh" --source "$TEMP_DIR/specforge" --dir "$(pwd)" "$@"
+          else
+            echo "git is required to download SpecForge." >&2
+            echo "Install git, or clone the repo manually and run:" >&2
+            echo "  bash /path/to/specforge/install.sh" >&2
+            exit 1
+          fi
+        fi
+      fi
+    fi
+    ;;
+
+  # ── update ──
+  update)
+    require_sf
+    SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    REPO_DIR="$(dirname "$SELF_DIR")"
+
+    if [ -f "$REPO_DIR/.specforge/scripts/sf-update.sh" ]; then
+      bash "$REPO_DIR/.specforge/scripts/sf-update.sh" --root "$ROOT" --source "$REPO_DIR" "$@"
+    elif [ -n "${SPECFORGE_REPO:-}" ] && [ -f "$SPECFORGE_REPO/.specforge/scripts/sf-update.sh" ]; then
+      bash "$SPECFORGE_REPO/.specforge/scripts/sf-update.sh" --root "$ROOT" --source "$SPECFORGE_REPO" "$@"
+    else
+      bash "$SF/scripts/sf-update.sh" "$@"
+    fi
+    ;;
+
+  # ── doctor ──
+  doctor)
+    require_sf
+    bash "$SF/scripts/sf-doctor.sh"
+    ;;
+
+  # ── status / facts ──
+  status|facts)
+    require_sf
+    bash "$SF/scripts/sf-facts.sh"
+    ;;
+
+  # ── lint ──
+  lint)
+    require_sf
+    bash "$SF/scripts/sf-lint-specs.sh"
+    ;;
+
+  # ── test ──
+  test)
+    require_sf
+    bash "$SF/scripts/sf-test.sh" "$@"
+    ;;
+
+  # ── verify ──
+  verify)
+    require_sf
+    bash "$SF/scripts/sf-verify-build.sh" "$@"
+    ;;
+
+  # ── finalize ──
+  finalize)
+    require_sf
+    bash "$SF/scripts/sf-finalize.sh" "$@"
+    ;;
+
+  # ── queue ──
+  queue)
+    require_sf
+    bash "$SF/scripts/sf-queue.sh" "$@"
+    ;;
+
+  # ── iteration ──
+  iteration)
+    require_sf
+    SUBCOMMAND="${1:-}"
+    shift || true
+    case "$SUBCOMMAND" in
+      abandon)
+        bash "$SF/scripts/sf-iteration.sh" archive-reset --abandon "$@"
+        ;;
+      *)
+        echo "Unknown iteration subcommand: $SUBCOMMAND" >&2
+        echo "Usage: sf iteration abandon" >&2
+        exit 1
+        ;;
+    esac
+    ;;
+
+  # ── worktree ──
+  worktree)
+    require_sf
+    bash "$SF/scripts/sf-worktree.sh" "$@"
+    ;;
+
+  # ── task ──
+  task)
+    require_sf
+    SUBCOMMAND="${1:-}"
+    shift || true
+    case "$SUBCOMMAND" in
+      list)
+        bash "$SF/scripts/sf-task.sh" list
+        ;;
+      "")
+        echo "Usage: sf task list" >&2
+        exit 1
+        ;;
+      *)
+        echo "Unknown task subcommand: $SUBCOMMAND" >&2
+        echo "Usage: sf task list" >&2
+        exit 1
+        ;;
+    esac
+    ;;
+
+  # ── removed commands ──
+  wave|trace|requirements|review|snapshot)
+    echo "'sf $COMMAND' was removed: that judgment is agent-side now." >&2
+    echo "Use /sf-plan for wave planning, /sf-review for review, /sf-status for status," >&2
+    echo "or grep .specforge/specs/ and .specforge/iterations/*/specs/ for traceability." >&2
+    exit 1
+    ;;
+
+  # ── help ──
+  help|--help|-h)
+    show_help
+    ;;
+
+  *)
+    echo "Unknown command: $COMMAND" >&2
+    echo "Run 'sf help' for usage." >&2
+    exit 1
+    ;;
+esac

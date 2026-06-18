@@ -1,0 +1,24 @@
+# SpecForge project config — the only config file. Agents and scripts read this.
+project_name: my-project
+
+# Command that runs your test suite. Must exit non-zero on failure.
+test_command: echo "set test_command in project.yaml" && false
+
+# Optional. Used by agents for context; not enforced.
+lint_command:
+build_command:
+source_dir: src
+
+# Optional. Branch to merge into. Auto-detected (main/master/trunk/develop) if unset.
+base_branch:
+
+# Repos with multiple sub-projects can replace the flat commands above with a
+# projects list. `sf test` runs every project; `sf test <id>` runs one.
+#
+# projects:
+#   - id: api
+#     path: services/api
+#     test_command: npm test
+#   - id: web
+#     path: apps/web
+#     test_command: npm test

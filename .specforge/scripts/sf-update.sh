@@ -1,174 +1,73 @@
 #!/usr/bin/env bash
-# sf-update.sh - Preserve-first SpecForge framework updater.
+# sf-update.sh - Re-copy framework internals from a source repo (preserving
+# project-owned content) and re-project canon into installed IDEs.
+#
+#   sf-update.sh --root <project> [--source <specforge-repo>] [--dry-run] [--ide all|list]
+#
+# Project-owned (NEVER touched): project.yaml, work/, NEXT.md, and user content
+# in root AGENTS.md/CLAUDE.md outside the managed block. Generated IDE files are
+# overwritten only when they carry the SpecForge marker; user files are preserved.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=lib/common.sh
-source "$SCRIPT_DIR/lib/common.sh"
-# shellcheck source=lib/adapter.sh
-source "$SCRIPT_DIR/lib/adapter.sh"
-# shellcheck source=lib/managed-block.sh
-source "$SCRIPT_DIR/lib/managed-block.sh"
+SF_SELF="$(cd "$SCRIPT_DIR/.." && pwd)"
+LIB="$SF_SELF/lib"
+# shellcheck source=../lib/common.sh
+source "$LIB/common.sh"
+# shellcheck source=../lib/managed-block.sh
+source "$LIB/managed-block.sh"
+# shellcheck source=../lib/frontmatter.sh
+source "$LIB/frontmatter.sh"
+# shellcheck source=../lib/project.sh
+source "$LIB/project.sh"
 
-ROOT="$(sf_root)"
-SOURCE=""
-IDE_ARG=""
-DRY_RUN=false
-
-while [[ $# -gt 0 ]]; do
+ROOT=""; SOURCE=""; DRY=false; IDE_ARG=""
+while [ $# -gt 0 ]; do
   case "$1" in
-    --root)
-      ROOT="$(cd "$2" && pwd)"
-      shift 2
-      ;;
-    --source)
-      SOURCE="$(cd "$2" && pwd)"
-      shift 2
-      ;;
-    --ide)
-      IDE_ARG="$2"
-      shift 2
-      ;;
-    --dry-run)
-      DRY_RUN=true
-      shift
-      ;;
-    -h|--help)
-      echo "usage: sf-update.sh [--root DIR] [--source SPECFORGE_REPO] [--ide IDE[,IDE]|all] [--dry-run]"
-      exit 0
-      ;;
-    *)
-      sf_usage "sf-update.sh [--root DIR] [--source SPECFORGE_REPO] [--ide IDE[,IDE]|all] [--dry-run]"
-      ;;
+    --root) ROOT="${2:-}"; shift 2 ;;
+    --source) SOURCE="${2:-}"; shift 2 ;;
+    --dry-run) DRY=true; shift ;;
+    --ide) IDE_ARG="${2:-}"; shift 2 ;;
+    *) shift ;;
   esac
 done
 
-SF="$ROOT/.specforge"
-if [ -z "$SOURCE" ]; then
-  SOURCE="$ROOT"
-fi
-SRC_SF="$SOURCE/.specforge"
-SAME_SOURCE=false
+[ -n "$ROOT" ] || ROOT="$(sf_root)"
+ROOT="$(cd "$ROOT" && pwd)"
 
-[ -d "$SF" ] || sf_die ".specforge directory missing at $ROOT"
-[ -d "$SRC_SF" ] || sf_die "SpecForge source missing at $SRC_SF"
-[ -f "$SRC_SF/root/SPECFORGE.md" ] || sf_die "SpecForge source missing root/SPECFORGE.md"
-
-if [ "$(cd "$SF" && pwd)" = "$(cd "$SRC_SF" && pwd)" ]; then
-  SAME_SOURCE=true
-fi
-
-copy_path() {
-  local rel="$1"
-  local src="$SRC_SF/$rel"
-  local dst="$SF/$rel"
-
-  [ -e "$src" ] || return 0
-  if [ "$SAME_SOURCE" = true ]; then
-    echo "  ✓ .specforge/$rel already using source"
-    return 0
-  fi
-
-  if [ "$DRY_RUN" = true ]; then
-    echo "  → would update .specforge/$rel"
-    return 0
-  fi
-
-  rm -rf "$dst"
-  mkdir -p "$(dirname "$dst")"
-  cp -R "$src" "$dst"
-  echo "  ✓ updated .specforge/$rel"
-}
-
-copy_spec_template() {
-  # specs/ is project-owned (it holds user SPEC files), so the bulk copy_path
-  # sweep skips it. The framework-owned spec templates are synced explicitly.
-  local name src dst
-  for name in TEMPLATE.md TEMPLATE-QUICK.md; do
-    src="$SRC_SF/specs/$name"
-    dst="$SF/specs/$name"
-    [ -f "$src" ] || continue
-    if [ "$SAME_SOURCE" = true ]; then
-      echo "  ✓ .specforge/specs/$name already using source"
-      continue
-    fi
-    if [ "$DRY_RUN" = true ]; then
-      echo "  → would update .specforge/specs/$name"
-      continue
-    fi
-    mkdir -p "$SF/specs"
-    cp "$src" "$dst"
-    echo "  ✓ updated .specforge/specs/$name"
-  done
-  [ "$DRY_RUN" = true ] || [ "$SAME_SOURCE" = true ] || { [ -f "$SF/specs/.gitkeep" ] || touch "$SF/specs/.gitkeep"; }
-}
-
-copy_task_template() {
-  local src="$SRC_SF/tasks/TEMPLATE.md"
-  local dst="$SF/tasks/TEMPLATE.md"
-
-  [ -f "$src" ] || return 0
-  if [ "$SAME_SOURCE" = true ]; then
-    echo "  ✓ .specforge/tasks/TEMPLATE.md already using source"
-    return 0
-  fi
-  if [ "$DRY_RUN" = true ]; then
-    echo "  → would update .specforge/tasks/TEMPLATE.md"
-    return 0
-  fi
-
-  mkdir -p "$SF/tasks"
-  cp "$src" "$dst"
-  [ -f "$SF/tasks/.gitkeep" ] || touch "$SF/tasks/.gitkeep"
-  echo "  ✓ updated .specforge/tasks/TEMPLATE.md"
-}
-
-run_adapters() {
-  local ide_list ide adapter
-  ide_list="$(sf_adapter_list_from_arg_or_install "$ROOT" "$IDE_ARG")"
-  [ -n "$ide_list" ] || return 0
-
-  for ide in $ide_list; do
-    adapter="$SF/adapters/$ide/adapt.sh"
-    if [ -f "$adapter" ]; then
-      if [ "$DRY_RUN" = true ]; then
-        echo "  → would run $ide adapter"
+# 1. Re-copy framework internals (skip when updating in place / no source).
+if [ -n "$SOURCE" ]; then
+  SOURCE="$(cd "$SOURCE" && pwd)"
+  if [ "$SOURCE" != "$ROOT" ] && [ -d "$SOURCE/.specforge" ]; then
+    echo "Syncing framework internals from $SOURCE"
+    for sub in canon profiles lib scripts; do
+      [ -d "$SOURCE/.specforge/$sub" ] || continue
+      if [ "$DRY" = true ]; then
+        echo "  → would refresh .specforge/$sub"
       else
-        echo ""
-        echo "Running $ide adapter..."
-        (cd "$ROOT" && bash "$adapter")
+        rm -rf "$ROOT/.specforge/$sub"
+        cp -R "$SOURCE/.specforge/$sub" "$ROOT/.specforge/$sub"
+        echo "  ✓ refreshed .specforge/$sub"
       fi
-    else
-      sf_warn "no adapter found for $ide"
-    fi
-  done
-}
-
-echo "SpecForge update"
-echo ""
-
-for rel in scripts agents skills docs templates adapters root; do
-  copy_path "$rel"
-done
-copy_spec_template
-copy_task_template
-
-chmod +x "$SF/scripts/"*.sh 2>/dev/null || true
-chmod +x "$SF/adapters/"*/adapt.sh 2>/dev/null || true
-
-echo ""
-echo "Updating managed root instructions..."
-sf_update_managed_block "$ROOT/AGENTS.md" "$SRC_SF/root/SPECFORGE.md" "$DRY_RUN" "AGENTS.md"
-if [ -d "$ROOT/.claude" ] || [ -f "$ROOT/CLAUDE.md" ] || [ -L "$ROOT/CLAUDE.md" ] || [ "$IDE_ARG" = "claude-code" ] || [ "$IDE_ARG" = "all" ]; then
-  sf_update_managed_block "$ROOT/CLAUDE.md" "$SRC_SF/root/SPECFORGE.md" "$DRY_RUN" "CLAUDE.md"
+    done
+  fi
 fi
 
-run_adapters
-
-echo ""
-if [ "$DRY_RUN" = true ]; then
-  echo "Dry run complete. No files were changed."
+# 2. Determine IDEs and re-project.
+IDES=""
+if [ -n "$IDE_ARG" ]; then
+  [ "$IDE_ARG" = "all" ] && IDES="claude-code opencode codex pi antigravity" || IDES="$(echo "$IDE_ARG" | tr ',' ' ')"
 else
-  echo "SpecForge update complete."
+  IDES="$(sf_detect_ides "$ROOT")"
 fi
+[ -n "$IDES" ] || { echo "No installed IDEs detected; nothing to project."; exit 0; }
+
+echo ""
+echo "Re-projecting canon for: $IDES"
+for ide in $IDES; do
+  sf_project_ide "$ROOT" "$ide" "$DRY"
+done
+
+echo ""
+[ "$DRY" = true ] && echo "Dry run complete (no changes written)." || echo "Update complete."

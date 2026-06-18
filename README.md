@@ -1,201 +1,85 @@
 # SpecForge
 
-SpecForge is a small, spec-driven workflow for AI-assisted development.
+A thin, agent-driven harness for spec-first software work. The human validates
+only genuine **design decisions**; everything else is driven by subagents that
+verify each other's work. The rule above all: **no agent grades its own homework.**
 
-```text
-Plan -> Build Loop -> Archive
-```
+## What it is
 
-Work is right-sized to three lanes so simple changes are not over-processed:
-
-- **task** (`/sf-task`) — mechanical change, no new behavior; one independent review.
-- **quick-spec** (`/sf-quickspec`) — small feature where the spec is the design (no ALIGN/DESIGN), one approval, one fresh-eyes review.
-- **full-plan** (`/sf-plan`) — complex or ambiguous work: ALIGN, DESIGN, approved SPEC files.
-
-`/sf "<request>"` classifies a request and routes it to the right lane.
-
-- The build loop writes red tests, ships implementation, and finalizes each SPEC.
-- Manual mode uses human approval at `/sf-ship` and `/sf-finalize`.
-- Autonomous mode uses independent reviewer PASS receipts through `/sf-loop`.
-- New requirements wait in `NEXT.md` while active specs are unfinished.
-
-SpecForge works with any stack. Your project commands live in
-`.specforge/config.yaml`.
+- **Two lanes.** `direct` (mechanical, no new behavior — zero human gates) and
+  `spec` (new/changed behavior — produces a SPEC, and a DESIGN only when the work
+  crosses components / adds a data shape / has a live decision).
+- **Fresh-eyes roles.** `coordinator` conducts; `aligner` → `designer` is the
+  human-gated design phase; `test-author` → `implementer` → `verifier` is the
+  build, with a different agent at each step. The test-author never writes code;
+  the implementer never edits tests; the verifier authored neither.
+- **State is observed, not stored.** No state field, no state-machine script.
+  Lifecycle is derived from git + filesystem (work dir, `feature/<slug>` branch,
+  the red-tests commit, a `Verified-by:` trailer, the move to `work/archive/`).
+  `sf status` reports it; it enforces nothing.
+- **Two human gates only.** Approve the plan (Gate 1) and approve the merge
+  (Gate 2). The direct lane has none.
+- **One guardrail.** `sf merge` refuses unless tests are green and HEAD carries a
+  `Verified-by:` trailer. Everything reversible is unguarded.
 
 ## Install
 
-From your project directory:
+Curl one-liner (no clone needed), run from your project root:
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/fibunix/specforge/main/install.sh | bash
+```sh
+curl -fsSL https://raw.githubusercontent.com/fibunix/specforge/main/install.sh | bash -s -- --ide all
 ```
 
-Pick an adapter when needed:
+Or from a local clone:
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/fibunix/specforge/main/install.sh | bash -s -- --ide codex
+```sh
+bash install.sh --source /path/to/specforge --dir /your/project --ide all
+# IDEs: claude-code, opencode, codex, pi, antigravity, all
 ```
 
-Supported values:
+Upgrade in place (re-fetches the framework, preserves your content):
 
-```text
-opencode, claude-code, codex, pi, antigravity, all
+```sh
+bin/sf update            # or: bin/sf upgrade
 ```
 
-## Configure
+Override the source with `SPECFORGE_GIT_URL` / `SPECFORGE_VERSION` env vars.
 
-Edit `.specforge/config.yaml`:
+Then edit `project.yaml` (set `test_command`) and, in your editor, run `/sf
+"<request>"` to route work or `/sf-loop` to drive autonomously.
 
-```yaml
-project_name: my-project
-test_command: npm test
-lint_command: npm run lint
-build_command: npm run build
-source_dir: src
+## CLI (deterministic essentials only)
+
+| Command | Purpose |
+|---------|---------|
+| `sf status` | Read-only facts about active work items |
+| `sf worktree create <slug>` | Isolated worktree on `feature/<slug>` |
+| `sf test [project]` | Run the configured test command(s) |
+| `sf merge <slug>` | Guardrail-checked ff-merge + archive |
+| `sf init` / `sf update` / `sf doctor` | Install / re-project canon / health check |
+
+Everything requiring judgment lives in skills/agents, not the CLI.
+
+## Layout
+
+```
+.specforge/
+  canon/        author-once source: agents/ skills/ templates/ docs/ root/
+  profiles/     one tiny file per IDE (data + emit hooks)
+  lib/          shared bash (projector, frontmatter, git, work-state, ...)
+  scripts/      sf-init/update/doctor/worktree/test/status
+project.yaml    the only config (project-owned)
+work/active/    one dir per in-flight item; archived to work/archive/<date>-<slug>/
+NEXT.md         backlog of one-line briefs
 ```
 
-For monorepos, define `projects:` in the same file.
+### Multi-IDE without duplication
 
-If your base branch is not `main`, `master`, `trunk`, or `develop`, set the
-`SPECFORGE_BASE_BRANCH` environment variable so that `sf finalize` can find
-it:
+Each skill/agent is authored once in `canon/`. A single projector
+(`lib/project.sh`) renders it into each IDE's layout using a per-IDE
+`profiles/<ide>.sh` (an allowlist, so OpenCode's strict schema is never violated
+and no `opencode.json`/model IDs are written). Generated files carry a
+`SPECFORGE-GENERATED` marker so `sf update` overwrites them while preserving any
+user-authored file. Adding a 6th IDE is one new profile.
 
-```bash
-export SPECFORGE_BASE_BRANCH=release
-```
-
-## Use
-
-Run these in your AI coding tool:
-
-```text
-/sf "..."             classify a request and route it to the right lane
-/sf-plan              create and approve ALIGN.md, DESIGN.md, and specs
-/sf-quickspec "..."   small feature: one self-contained spec, single review
-/sf-test SPEC-ID      write red tests for one spec, then commit for review
-/sf-review SPEC-ID    review tests or implementation
-/sf-ship SPEC-ID      implement after tests are approved
-/sf-finalize SPEC-ID  verify, merge, and clean up
-/sf-loop              autonomously advance approved specs after reviewer PASS
-/sf-task "..."        execute a mechanical task with independent review
-/sf-status            show current state, queued next work, and requirement trace
-```
-
-`/sf-status` reads each spec's State from its most-advanced copy (worktree,
-feature branch, or checkout) and ends with a computed `Next:` line — it stays
-truthful while work is in flight on feature branches.
-
-Normal flow:
-
-```text
-/sf-plan
-/sf-test SPEC-ID
-/sf-review SPEC-ID
-/sf-ship SPEC-ID
-/sf-review SPEC-ID
-/sf-finalize SPEC-ID
-```
-
-Quick lane (small feature):
-
-```text
-/sf-quickspec "add a --json flag to the report command"
-```
-
-Autonomous flow after Plan approval:
-
-```text
-/sf-loop
-```
-
-Re-invoke `/sf-loop` until it prints `PIPELINE BLOCKED` (see
-`.specforge/docs/LOOP-RUNNERS.md` for per-tool drivers — Claude Code's native
-`/loop`, Codex, OpenCode, Pi). It may continue through merge only after
-independent reviewers write current PASS receipts in `.specforge/reviews/`. If a
-reviewer cannot run, cannot write the receipt, or omits exact `VERDICT: PASS`,
-the loop stops for human action. Plan approval is never automated.
-
-`SPEC-ID` resolves `.specforge/specs/SPEC-ID.md` or `.specforge/specs/SPEC-ID-<slug>.md`.
-Branches use the stable ID: `feature/SPEC-009` for `SPEC-009-frequency-record.md`.
-
-### Plan
-
-`/sf-plan` routes to one state based on disk:
-
-- **Active iteration unfinished** — queues new requirements in `NEXT.md` and stops.
-- **Iteration complete** — archives it under its `ITER-NNN-<slug>` ID (with a SUMMARY.md close-out), keeps `NEXT.md` as the next brief, then runs the Aligner.
-- **Need alignment** (no approved `ALIGN.md`) — runs the Aligner, seeded from `NEXT.md` when present.
-- **ALIGN approved** — runs the Designer to produce `DESIGN.md` and SPEC files. On bundle approval the Designer sets `State: approved` on every SPEC.
-
-If a session is already long when Plan routes to alignment or design, end it and re-run `/sf-plan` in a fresh session — disk state is preserved and the new session picks up exactly where you left off.
-
-### Test
-
-`/sf-test SPEC-ID` creates or switches to `feature/SPEC-ID`, writes failing tests for every unchecked item in the SPEC's `## Tests` section, confirms they are red, sets `State: tests-red`, and **commits the red tests**. It stops there.
-
-Inspect the committed tests with `/sf-review SPEC-ID`. In manual mode, approve
-them by running `/sf-ship SPEC-ID`. In autonomous mode, `/sf-loop` requires an
-independent `tests-red` PASS receipt before shipping.
-
-### Ship
-
-`/sf-ship SPEC-ID` implements the minimum code to make the committed red tests pass, ticks the SPEC checkboxes, commits on `feature/SPEC-ID`, and runs the verifier. It stops for final review.
-
-Inspect the diff with `/sf-review SPEC-ID`. In manual mode, finalize with
-`/sf-finalize SPEC-ID`. In autonomous mode, `/sf-loop` requires an independent
-`done` PASS receipt before running finalize with `--autonomous`.
-
-### Parallel work
-
-Ask the agent for a wave plan (the procedure is in the sf-plan skill). Ready specs with disjoint declared file sets can be built concurrently. Open one session per worktree (`sf worktree create SPEC-ID`) and run the normal flow in each. Use `sf finalize SPEC-ID --rebase` when the base branch has moved.
-
-## Update
-
-From your project directory:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/fibunix/specforge/main/install.sh | bash -s -- --update
-```
-
-Or if you have `sf` available:
-
-```bash
-sf update --dry-run
-sf update
-```
-
-## CLI
-
-```bash
-sf update --dry-run
-sf update
-sf doctor
-sf status        # alias: sf facts — dumps plan + per-SPEC facts
-sf test
-sf lint
-sf verify SPEC-ID
-sf finalize SPEC-ID [--dry-run] [--rebase] [--autonomous]
-sf queue "requirement text"
-sf worktree create|merge SPEC-ID
-sf iteration abandon
-```
-
-Scripts enforce, agents interpret: status reasoning, wave planning, review
-judgment, autonomous reviewer gating, and requirement traceability live in the
-skills (`/sf-status`, `/sf-plan`, `/sf-review`, `/sf-loop`), not in the CLI.
-
-## Rules
-
-1. Specs are the contract.
-2. Tests come before implementation.
-3. Humans approve Plan and every manual phase transition; autonomous build-loop
-   transitions require independent reviewer PASS receipts.
-4. Use one spec, one branch, and one merge.
-5. Builders run `.specforge/scripts/sf-test.sh`.
-6. Approved active iterations are protected; future requirements wait in `NEXT.md`.
-
-## Docs
-
-- [Flow](.specforge/docs/FLOW.md)
-- [Spec format](.specforge/docs/SPEC-FORMAT.md)
-- [Adapters](.specforge/adapters/README.md)
+The previous version is preserved under `archive-v1/` for reference.

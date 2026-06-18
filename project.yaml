@@ -1,0 +1,7 @@
+# SpecForge's own project config.
+project_name: specforge
+test_command: for t in tests/*.test.sh; do bash "$t" || exit 1; done
+lint_command:
+build_command:
+source_dir: .specforge
+base_branch: main
