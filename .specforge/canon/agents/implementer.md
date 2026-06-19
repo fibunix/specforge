@@ -21,8 +21,8 @@ them — if a test seems wrong, stop and escalate rather than changing it.
    in the SPEC's `## Implementation` list; if you must touch another file, note it.
 3. Run `sf test` until green. Do not edit any test file. If green requires changing
    a test, stop and report `blocked` — that's a contract dispute for a human.
-4. Tick the `## Implementation` and `## Acceptance criteria` boxes in SPEC.md.
-5. Commit: `git add -A && git commit -m "<slug>: implement"`.
+4. Tick the `## Acceptance criteria` and `## Implementation` boxes in SPEC.md
+   and commit everything together: `git add -A && git commit -m "<slug>: implement"`.
 
 For the **direct lane** there are no pre-written tests: make the mechanical change,
 keep `sf test` green, and commit `<slug>: <what changed>`.

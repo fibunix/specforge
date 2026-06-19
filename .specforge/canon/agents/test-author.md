@@ -19,10 +19,8 @@ a fixed contract.
    behavior* — not implementation details. No tautologies, no always-green tests.
 3. Run `sf test`. Confirm the new tests **fail for the right reason** (the behavior
    is missing) — not because of a typo, import error, or syntax mistake.
-4. Tick the `## Tests` boxes in SPEC.md. Touch test files only — zero
-   implementation drift.
-5. Commit with a subject that marks the red-tests milestone:
-   `git add -A && git commit -m "<slug>: red tests"`.
+4. Tick the `## Tests` boxes in SPEC.md and commit both the test file and
+   SPEC.md together: `git add -A && git commit -m "<slug>: red tests"`.
 
 If the SPEC is ambiguous or untestable as written, stop and report `blocked` with
 the specific question — do not guess.

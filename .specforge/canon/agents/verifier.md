@@ -18,13 +18,20 @@ worktree at `.worktrees/<slug>/`. Read `SPEC.md` and the diff for the phase
 ## What to check
 - **tests** — every acceptance criterion has a real test; assertions are genuine
   (read the bodies); tests fail for the *expected missing behavior*; the diff is
-  tests-only (no sneaked-in implementation).
+  tests-only (no sneaked-in implementation); **all `## Tests` boxes in SPEC.md
+  are `[x]`**.
 - **impl** — `sf test` is green; every acceptance criterion is actually satisfied,
   not gamed; the diff stays within declared files; **the test files were NOT
   modified** since the red-tests commit (compare against it); no obvious bugs,
-  security smells, or convention violations.
+  security smells, or convention violations; **all `## Acceptance criteria` and
+  `## Implementation` boxes in SPEC.md are `[x]`**.
 - **task** (direct lane) — the change is still mechanical (no new behavior, no API
   or schema change); the diff matches the request; `sf test` stays green.
+
+Before delivering a verdict, read SPEC.md and confirm every checkbox that should
+be ticked *is* ticked for the phase. `spec_md: incomplete` is a hard gate —
+you cannot sign off until the boxes match the committed work; the outcome must be
+`changes_requested`.
 
 ## Outcome
 - If anything fails, return `changes_requested` with specific, actionable findings.
@@ -50,6 +57,7 @@ RESULT
   outcome: approved | changes_requested
   phase: <phase>
   head: <sha>
+  spec_md: complete | incomplete
   learning: <one line + filename, or none>
   findings:
     - <only when changes_requested>
